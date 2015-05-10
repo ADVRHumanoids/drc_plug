@@ -11,6 +11,9 @@
  * 
  * @author 
  */
+
+using namespace walkman::drc::plug;
+
 class drc_plug_module : public control_module<drc_plug_thread> {
 public:
     

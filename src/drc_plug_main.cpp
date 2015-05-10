@@ -21,9 +21,7 @@ int main(int argc, char* argv[])
     // create rf
     yarp::os::ResourceFinder rf;
     rf.setVerbose(true);
-    // set drc_plug_initial_config.ini as default
-    // to specify another config file, run with this arg: --from your_config_file.ini 
-    rf.setDefaultConfigFile( "drc_plug_initial_config.ini" ); 
+    rf.setDefaultConfigFile( "bigman_drc_plug.ini" ); 
     rf.setDefaultContext( "drc_plug" );  
     rf.configure(argc, argv);
     // create my module
