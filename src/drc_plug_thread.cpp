@@ -158,10 +158,25 @@ void drc_plug_thread::init_actions(state new_state)
     }
     if ( new_state == state::rotating)
     {
+	yarp::sig::Matrix r_w = auto_stack->right_arm_task->getWeight(); 
+	r_w(3,3) = 0.0; 
+	auto_stack->right_arm_task->setWeight(r_w);
+	
+	yarp::sig::Matrix l_w = auto_stack->left_arm_task->getWeight();
+	l_w(3,3) = 0.0; 
+	auto_stack->left_arm_task->setWeight(l_w);
+	
 	plug_traj.init_rotating(plug_cmd.angle);
     }
     if ( new_state == state::moving_away)
     {
+      	yarp::sig::Matrix r_w = auto_stack->right_arm_task->getWeight(); 
+	r_w(3,3) = 1; 
+	auto_stack->right_arm_task->setWeight(r_w);
+	
+	yarp::sig::Matrix l_w = auto_stack->left_arm_task->getWeight();
+	l_w(3,3) = 1; 
+	auto_stack->left_arm_task->setWeight(l_w);
 	plug_traj.init_moving_away();
     }
 

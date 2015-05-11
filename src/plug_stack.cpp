@@ -26,10 +26,6 @@ walkman::drc::plug::plug_stack::plug_stack(const double dT,
 //     for(unsigned int i = 0; i < 3; ++i)
 //         left_arm_active_joints[model.torso.joint_numbers[i]] = true;
     left_arm_task->setActiveJointsMask(left_arm_active_joints);
-    
-//     yarp::sig::Matrix l_w = left_arm_task->getWeight();
-//     l_w(2,2) = 0.0; l_w(4,4) = 0.0; l_w(5,5) = 0.0; 
-//     left_arm_task->setWeight(l_w);
 
     /* RIGHT ARM TASK */
     right_arm_task.reset(
@@ -51,7 +47,7 @@ walkman::drc::plug::plug_stack::plug_stack(const double dT,
 //     for(unsigned int i = 0; i < 3; ++i)
 //         rigth_arm_active_joints[model.torso.joint_numbers[i]] = true;
     right_arm_task->setActiveJointsMask(rigth_arm_active_joints);
-
+    
     /* RIGHT FOOT TASK */
     right_foot_task.reset(
         new tasks::velocity::Cartesian(
@@ -96,8 +92,10 @@ walkman::drc::plug::plug_stack::plug_stack(const double dT,
 //         new OpenSoT::SubTask(postural,
 //                              OpenSoT::SubTask::SubTaskMap(model.torso.joint_numbers)));
     yarp::sig::Vector zero(q.size(),0.0);
-    zero[model.left_arm.joint_numbers[3]] = -60 * M_PI/180.0;
-    zero[model.right_arm.joint_numbers[3]] = -60 * M_PI/180.0;
+//     zero[model.left_arm.joint_numbers[3]] = -60 * M_PI/180.0;
+//     zero[model.right_arm.joint_numbers[3]] = -60 * M_PI/180.0;
+    zero[model.left_arm.joint_numbers[1]] = 20 * M_PI/180.0;
+    zero[model.right_arm.joint_numbers[1]] = -20 * M_PI/180.0;
     postural->setReference(zero);
     
 //     yarp::sig::Matrix pW = postural_torso->getWeight();

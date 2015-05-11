@@ -184,14 +184,14 @@ bool walkman::drc::plug::plug_actions::init_reaching()
     
     if (left_arm_controlled){ 
 	Button_FinalLhand.p = KDL::Vector(-(APPROACHING_OFFSET + PIN_HAND_X),-PIN_HAND_Y,-PIN_HAND_Z);
-	Button_FinalLhand.M = KDL::Rotation::RotY(-M_PI/2.0) * KDL::Rotation::RotZ(M_PI/2.0);
+	Button_FinalLhand.M = KDL::Rotation::RotY(-M_PI/2.0);
 	world_FinalLhand = world_Button * Button_FinalLhand;
 	
 	left_arm_generator.line_initialize(5.0, world_InitialLhand,world_FinalLhand);
     }
     if (right_arm_controlled){
 	Button_FinalRhand.p = KDL::Vector(-(APPROACHING_OFFSET + PIN_HAND_X),PIN_HAND_Y,-PIN_HAND_Z);
-	Button_FinalRhand.M = KDL::Rotation::RotY(-M_PI/2.0) * KDL::Rotation::RotZ(-M_PI/2.0);;
+	Button_FinalRhand.M = KDL::Rotation::RotY(-M_PI/2.0);
 	world_FinalRhand = world_Button * Button_FinalRhand;
 	
 	right_arm_generator.line_initialize(5.0, world_InitialRhand,world_FinalRhand); 
@@ -227,14 +227,14 @@ bool walkman::drc::plug::plug_actions::init_approaching()
     
     if (left_arm_controlled){ 
 	Button_FinalLhand.p = KDL::Vector(-PIN_HAND_X,-PIN_HAND_Y,-PIN_HAND_Z);
-	Button_FinalLhand.M = KDL::Rotation::RotY(-M_PI/2.0) * KDL::Rotation::RotZ(M_PI/2.0);
+	Button_FinalLhand.M = KDL::Rotation::RotY(-M_PI/2.0);
 	world_FinalLhand = world_Button * Button_FinalLhand;
 	
 	left_arm_generator.line_initialize(5.0, world_InitialLhand,world_FinalLhand);
     }
     if (right_arm_controlled){
 	Button_FinalRhand.p = KDL::Vector(-PIN_HAND_X,PIN_HAND_Y,-PIN_HAND_Z);
-	Button_FinalRhand.M = KDL::Rotation::RotY(-M_PI/2.0) * KDL::Rotation::RotZ(-M_PI/2.0);
+	Button_FinalRhand.M = KDL::Rotation::RotY(-M_PI/2.0);
 	world_FinalRhand = world_Button * Button_FinalRhand;
 	
 	right_arm_generator.line_initialize(5.0, world_InitialRhand,world_FinalRhand); 
@@ -316,7 +316,7 @@ bool walkman::drc::plug::plug_actions::perform_rotating()
     return true;
 }
 
-
+// TODO Change it to move perpendicularly from the initial position
 bool walkman::drc::plug::plug_actions::init_moving_away()
 {
     YarptoKDL(left_arm_task->getActualPose(), world_InitialLhand);  
@@ -324,14 +324,14 @@ bool walkman::drc::plug::plug_actions::init_moving_away()
     
     if (left_arm_controlled){ 
 	Button_FinalLhand.p = KDL::Vector(-(APPROACHING_OFFSET + PIN_HAND_X),-PIN_HAND_Y,-PIN_HAND_Z);
-	Button_FinalLhand.M = KDL::Rotation::RotY(-M_PI/2.0) * KDL::Rotation::RotZ(M_PI/2.0);
+	Button_FinalLhand.M = KDL::Rotation::RotY(-M_PI/2.0);
 	world_FinalLhand = world_Button * Button_FinalLhand;
 	
 	left_arm_generator.line_initialize(5.0, world_InitialLhand,world_FinalLhand);
     }
     if (right_arm_controlled){
 	Button_FinalRhand.p = KDL::Vector(-(APPROACHING_OFFSET + PIN_HAND_X),PIN_HAND_Y,-PIN_HAND_Z);
-	Button_FinalRhand.M = KDL::Rotation::RotY(-M_PI/2.0) * KDL::Rotation::RotZ(-M_PI/2.0);
+	Button_FinalRhand.M = KDL::Rotation::RotY(-M_PI/2.0);
 	world_FinalRhand = world_Button * Button_FinalRhand;
 	
 	right_arm_generator.line_initialize(5.0, world_InitialRhand,world_FinalRhand); 
