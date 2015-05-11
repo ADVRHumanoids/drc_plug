@@ -33,10 +33,12 @@ drc_plug_thread::drc_plug_thread( std::string module_prefix,
         std::make_tuple( state::reaching        ,   WALKMAN_DRC_PLUG_COMMAND_ACTION_DONE      ,    state::reached          ),
         std::make_tuple( state::reached         ,   WALKMAN_DRC_PLUG_COMMAND_APPROACH         ,    state::approaching      ),
         std::make_tuple( state::reached         ,   WALKMAN_DRC_PLUG_COMMAND_REACH            ,    state::reaching         ),
+        std::make_tuple( state::reached         ,   WALKMAN_DRC_PLUG_COMMAND_SAFE_EXIT        ,    state::safe_exiting     ),
         //--------------------------------------+---------------------------------------------+----------------------------+
         std::make_tuple( state::approaching     ,   WALKMAN_DRC_PLUG_COMMAND_ACTION_DONE      ,    state::approached       ),
         std::make_tuple( state::approached      ,   WALKMAN_DRC_PLUG_COMMAND_REACH            ,    state::reaching         ),
 	std::make_tuple( state::approached      ,   WALKMAN_DRC_PLUG_COMMAND_ROTATE           ,    state::rotating         ),
+        std::make_tuple( state::approached      ,   WALKMAN_DRC_PLUG_COMMAND_MOVE_AWAY        ,    state::moving_away      ),
         //--------------------------------------+---------------------------------------------+----------------------------+
         std::make_tuple( state::rotating        ,   WALKMAN_DRC_PLUG_COMMAND_ACTION_DONE      ,    state::rotated          ),
         std::make_tuple( state::rotated         ,   WALKMAN_DRC_PLUG_COMMAND_MOVE_AWAY        ,    state::moving_away      ),
@@ -45,7 +47,10 @@ drc_plug_thread::drc_plug_thread( std::string module_prefix,
 	std::make_tuple( state::moving_away     ,   WALKMAN_DRC_PLUG_COMMAND_ACTION_DONE      ,    state::moved_away       ),
 	std::make_tuple( state::moved_away      ,   WALKMAN_DRC_PLUG_COMMAND_REACH            ,    state::reaching         ),
 	std::make_tuple( state::moved_away      ,   WALKMAN_DRC_PLUG_COMMAND_SAFE_EXIT        ,    state::safe_exiting     ),
-	
+        //--------------------------------------+---------------------------------------------+----------------------------+
+        std::make_tuple( state::safe_exiting    ,   WALKMAN_DRC_PLUG_COMMAND_ACTION_DONE      ,    state::safe_exited      ),
+        //--------------------------------------+---------------------------------------------+----------------------------+
+        std::make_tuple( state::safe_exited     ,   WALKMAN_DRC_PLUG_COMMAND_REACH            ,    state::reaching         ),
     };
     
     state_map[state::idle] = "idle";
