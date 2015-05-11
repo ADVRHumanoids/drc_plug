@@ -25,6 +25,7 @@
 #define DRILL_LENGHT 0.25 		// lenght of the drill wrt the base of the drill
 #define DRILL_HANDLE_DEPTH 0.03		// handle edge wrt origin
 #define APPROACHING_OFFSET 0.1		// safe distance for reaching, to be shortened during approaching
+#define INSERT_OFFSET 0.03		// how much to insert the pin in the hole of the valve
 #define DRILL_ROTATION_ANGLE 90	        // rotation of the drill (deg) to set the button of the drill in the right position
 
 //drill button offsets
@@ -228,13 +229,13 @@ bool walkman::drc::plug::plug_actions::init_approaching()
     if (left_arm_controlled)
     { 
         world_FinalLhand = world_InitialLhand;
-        world_FinalLhand.p.data[0] = world_InitialLhand.p.data[0] + APPROACHING_OFFSET;	
+        world_FinalLhand.p.data[0] = world_InitialLhand.p.data[0] + APPROACHING_OFFSET + INSERT_OFFSET;	
         left_arm_generator.line_initialize(5.0, world_InitialLhand,world_FinalLhand);
     }
     if (right_arm_controlled)
     {
         world_FinalRhand = world_InitialRhand;
-        world_FinalRhand.p.data[0] = world_InitialRhand.p.data[0] + APPROACHING_OFFSET; 
+        world_FinalRhand.p.data[0] = world_InitialRhand.p.data[0] + APPROACHING_OFFSET + INSERT_OFFSET; 
         right_arm_generator.line_initialize(5.0, world_InitialRhand,world_FinalRhand); 
     }
      
@@ -330,13 +331,13 @@ bool walkman::drc::plug::plug_actions::init_moving_away()
     if (left_arm_controlled)
     { 
         world_FinalLhand = world_InitialLhand;
-        world_FinalLhand.p.data[0] = world_InitialLhand.p.data[0] - APPROACHING_OFFSET;	
+        world_FinalLhand.p.data[0] = world_InitialLhand.p.data[0] - (APPROACHING_OFFSET + INSERT_OFFSET);	
         left_arm_generator.line_initialize(5.0, world_InitialLhand,world_FinalLhand);
     }
     if (right_arm_controlled)
     {
         world_FinalRhand = world_InitialRhand;
-        world_FinalRhand.p.data[0] = world_InitialRhand.p.data[0] - APPROACHING_OFFSET; 
+        world_FinalRhand.p.data[0] = world_InitialRhand.p.data[0] - (APPROACHING_OFFSET + INSERT_OFFSET); 
         right_arm_generator.line_initialize(5.0, world_InitialRhand,world_FinalRhand); 
     }
      
