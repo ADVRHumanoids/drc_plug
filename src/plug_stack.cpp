@@ -96,6 +96,8 @@ walkman::drc::plug::plug_stack::plug_stack(const double dT,
 //     zero[model.right_arm.joint_numbers[3]] = -60 * M_PI/180.0;
     zero[model.left_arm.joint_numbers[1]] = 20 * M_PI/180.0;
     zero[model.right_arm.joint_numbers[1]] = -20 * M_PI/180.0;
+    zero[model.left_arm.joint_numbers[3]] = -30 * M_PI/180.0;
+    zero[model.right_arm.joint_numbers[3]] = -30 * M_PI/180.0;
     postural->setReference(zero);
     
 //     yarp::sig::Matrix pW = postural_torso->getWeight();
