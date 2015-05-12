@@ -346,7 +346,10 @@ void drc_plug_thread::control_law()
 
 void drc_plug_thread::move()
 {
-    yarp::sig::Vector q_torso(3), q_left_arm(7), q_right_arm(7), q_left_leg(6), q_right_leg(6), q_head(2);
+    yarp::sig::Vector real_joints = robot.sensePosition();
+    
+    
+    yarp::sig::Vector q_torso(3), q_left_arm(7), q_left_arm_real(7), q_right_arm(7), q_left_leg(6), q_right_leg(6), q_head(2);
     robot.fromIdynToRobot(output.q, q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head);
     
     //OFFSET 
@@ -354,10 +357,12 @@ void drc_plug_thread::move()
     q_right_arm = q_right_arm + right_arm_offset;
     
     robot.right_arm.move(q_right_arm);
-    robot.left_arm.move(q_left_arm);
     robot.torso.move(q_torso);
     robot.left_leg.move(q_left_leg);
     robot.right_leg.move(q_right_leg);
+    
+    robot.fromIdynToRobot(real_joints, q_right_arm, q_left_arm_real, q_torso, q_right_leg, q_left_leg, q_head);
+    robot.left_arm.move((q_left_arm-q_left_arm_real)*2.0 + q_left_arm_real);
 }
 
 bool drc_plug_thread::move_hands(double close)
