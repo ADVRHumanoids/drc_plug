@@ -298,6 +298,9 @@ bool walkman::drc::plug::plug_actions::init_rotating(double angle)
     }
     
     initialized_time=yarp::os::Time::now();
+
+    
+    fs.open ("plug_debug_trj_des.m", std::fstream::out);
     
     return true;
 }
@@ -321,7 +324,10 @@ bool walkman::drc::plug::plug_actions::perform_rotating()
 	Xd_R.M = world_InitialRhand.M;
 	right_arm_task->setReference( KDLtoYarp_position( Xd_R ) );
     }
-    
+
+    static int i=1;
+    fs<<"LF_LH_Des("<<i++<<",:)=["<<Xd_L.p.x()<<' '<<Xd_L.p.y()<<' '<<Xd_L.p.z()<<"];\n";
+
     return true;
 }
 

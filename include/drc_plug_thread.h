@@ -37,6 +37,9 @@ namespace walkman
 	    {
 	    private:  
 	      
+        std::fstream fs;
+        iDynUtils real_robot;
+        
 		state_machine<state> stateMachine;
 		
 		plug_actions plug_traj;
