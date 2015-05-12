@@ -300,6 +300,7 @@ void drc_plug_thread::sense()
     q_right_arm = q_right_arm - right_arm_offset;
     
     robot.fromRobotToIdyn(q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head, input.q);
+    KDL::Frame LeftFoot_LeftHand = model.iDyn3_model.getPositionKDL(model.left_leg.end_effector_index,model.left_arm.end_effector_index);
 }
 
 void drc_plug_thread::control_law()

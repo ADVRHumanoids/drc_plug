@@ -325,9 +325,6 @@ bool walkman::drc::plug::plug_actions::perform_rotating()
 	right_arm_task->setReference( KDLtoYarp_position( Xd_R ) );
     }
 
-    static int i=1;
-    fs<<"LF_LH_Des("<<i++<<",:)=["<<Xd_L.p.x()<<' '<<Xd_L.p.y()<<' '<<Xd_L.p.z()<<"];\n";
-
     return true;
 }
 
