@@ -58,7 +58,7 @@ walkman::drc::plug::plug_actions::plug_actions()
     button_data[YAW_INDEX] = 0.0;
     
     left_arm_controlled = false;
-    right_arm_controlled = true;
+    right_arm_controlled = false;
 }
 
 void walkman::drc::plug::plug_actions::set_controlled_arms(bool left_arm, bool right_arm)
@@ -182,6 +182,25 @@ bool walkman::drc::plug::plug_actions::init_reaching()
 {      
     YarptoKDL(left_arm_task->getActualPose(), world_InitialLhand);  
     YarptoKDL(right_arm_task->getActualPose(), world_InitialRhand);
+//     YarptoKDL(com_task->getActualPosition(), world_InitialCom.p);
+    YarptoKDL(pelvis_task->getActualPose(), world_InitialPelvis);
+    
+//     world_FinalCom = world_InitialCom;
+//     world_FinalCom.p.data[2] -= 0.1;
+//     com_generator.line_initialize(5.0, world_InitialCom,world_FinalCom); 
+    
+    world_FinalPelvis = world_InitialPelvis;
+    
+    if (world_Valve.p.data[2] < 1.1)
+    {
+	world_FinalPelvis.p.data[2] = world_Valve.p.data[2];
+	pelvis_generator.line_initialize(5.0, world_InitialPelvis,world_FinalPelvis); 
+    }
+    else
+    {
+	world_FinalPelvis.p.data[2] = 1.05;
+	pelvis_generator.line_initialize(5.0, world_InitialPelvis,world_FinalPelvis); 
+    }
     
     if (left_arm_controlled){ 
 	Button_FinalLhand.p = KDL::Vector(-(APPROACHING_OFFSET + PIN_HAND_X),-PIN_HAND_Y,0);
@@ -206,9 +225,9 @@ bool walkman::drc::plug::plug_actions::init_reaching()
 bool walkman::drc::plug::plug_actions::perform_reaching()
 {
     auto time = yarp::os::Time::now()-initialized_time;
-    KDL::Frame Xd_L, Xd_R;
-    KDL::Twist dXd_L, dXd_R;
-
+    KDL::Frame Xd_L, Xd_R, Xd_c, Xd_p;
+    KDL::Twist dXd_L, dXd_R, dXd_c, dXd_p;
+ 
     if (left_arm_controlled){ 
 	left_arm_generator.line_trajectory(time,Xd_L,dXd_L);
         left_arm_task->setReference( KDLtoYarp_position( Xd_L ) );
@@ -217,6 +236,13 @@ bool walkman::drc::plug::plug_actions::perform_reaching()
 	right_arm_generator.line_trajectory(time,Xd_R,dXd_R);
 	right_arm_task->setReference( KDLtoYarp_position( Xd_R ) );    
     }
+//     com_generator.line_trajectory(time,Xd_c,dXd_c);
+//     yarp::sig::Vector p_CoM;
+//     KDLtoYarp(Xd_c.p , p_CoM);
+//     com_task->setReference(p_CoM);
+
+    pelvis_generator.line_trajectory(time,Xd_p,dXd_p);
+    pelvis_task->setReference( KDLtoYarp_position( Xd_p ) );
    
     return true;
 }

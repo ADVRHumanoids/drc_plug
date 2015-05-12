@@ -25,7 +25,7 @@ namespace walkman
                 std::vector<double> button_data;
 		
 		KDL::Frame world_InitialRhand,world_InitialLhand,world_InitialRfoot,world_InitialCom;
-		
+		KDL::Frame world_InitialPelvis, world_FinalPelvis;
 		KDL::Frame world_FinalRhand,world_FinalLhand,world_FinalRfoot,world_FinalCom;
 		KDL::Frame world_Valve, world_Button;
                 KDL::Frame Button_FinalLhand, Button_FinalRhand;
@@ -45,6 +45,7 @@ namespace walkman
 		trajectory_generator right_arm_generator;
 		trajectory_generator right_foot_generator;
 		trajectory_generator com_generator;
+		trajectory_generator pelvis_generator;
 		
                 std::map<std::string, std::vector<double>*> cmd_data_map;
 
