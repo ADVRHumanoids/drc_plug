@@ -300,11 +300,6 @@ void drc_plug_thread::sense()
     q_right_arm = q_right_arm - right_arm_offset;
     
     robot.fromRobotToIdyn(q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head, input.q);
-    static int i=0;
-    if(current_state == walkman::drc::plug::state::rotating) fs<<"LF_LH_real("<<i++<<",:)=["<<LeftFoot_LeftHand.p.x()<<' '<<LeftFoot_LeftHand.p.y()<<' '<<LeftFoot_LeftHand.p.z()<<"];\n";
-    
-    YarptoKDL(auto_stack->left_arm_task->getActualPose(),LeftFoot_LeftHand);
-    if(current_state == walkman::drc::plug::state::rotating) fs<<"LF_LH_SoT("<<i++<<",:)=["<<LeftFoot_LeftHand.p.x()<<' '<<LeftFoot_LeftHand.p.y()<<' '<<LeftFoot_LeftHand.p.z()<<"];\n";
 }
 
 void drc_plug_thread::control_law()
