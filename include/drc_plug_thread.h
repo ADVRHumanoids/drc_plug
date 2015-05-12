@@ -37,7 +37,7 @@ namespace walkman
 	    {
 	    private:  
 	      
-        std::fstream fs;
+        std::fstream fs,fs1;
         iDynUtils real_robot;
         
 		state_machine<state> stateMachine;

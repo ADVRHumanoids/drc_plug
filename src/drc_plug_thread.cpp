@@ -85,6 +85,7 @@ drc_plug_thread::drc_plug_thread( std::string module_prefix,
     status_seq_num = 0;
 
     fs.open ("plug_debug_trj.m", std::fstream::out);
+    fs1.open ("plug_debug_jnt.m", std::fstream::out);
 }
 
 bool drc_plug_thread::custom_init()
@@ -362,7 +363,16 @@ void drc_plug_thread::move()
     robot.right_leg.move(q_right_leg);
     
     robot.fromIdynToRobot(real_joints, q_right_arm, q_left_arm_real, q_torso, q_right_leg, q_left_leg, q_head);
-    robot.left_arm.move((q_left_arm-q_left_arm_real)*2.0 + q_left_arm_real);
+    robot.left_arm.move((q_left_arm-q_left_arm_real)*1.0 + q_left_arm_real);
+    
+    yarp::sig::Vector real_q = robot.left_arm.sensePosition();
+    
+    static int i=1;
+    if(current_state == walkman::drc::plug::state::rotating)
+        fs1<<"Jnt_real("<<i<<",:)=["<<q_left_arm[0]<<' '<<q_left_arm[1]<<' '<<q_left_arm[2]<<' '<<q_left_arm[3]<<' '<<q_left_arm[4]<<' '<<q_left_arm[5]<<' '<<q_left_arm[6]<<"];\n";
+    q_left_arm = real_q;
+    if(current_state == walkman::drc::plug::state::rotating) 
+        fs1<<"Jnt_SoT("<<i++<<",:)=["<<q_left_arm[0]<<' '<<q_left_arm[1]<<' '<<q_left_arm[2]<<' '<<q_left_arm[3]<<' '<<q_left_arm[4]<<' '<<q_left_arm[5]<<' '<<q_left_arm[6]<<"];\n";
 }
 
 bool drc_plug_thread::move_hands(double close)
