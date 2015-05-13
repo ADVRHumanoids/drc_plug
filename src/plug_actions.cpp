@@ -339,7 +339,7 @@ bool walkman::drc::plug::plug_actions::init_moving_away()
 	world_FinalLhand = world_HandRotated * HandRotated_Hand;
         left_arm_generator.line_initialize(5.0, world_InitialLhand,world_FinalLhand);
     }
-    if (right_arm_controlled)
+    if (right_arm_controlled) // TODO SAME AS THE LEFT ARM
     {
         world_FinalRhand = world_InitialRhand;
         world_FinalRhand.p.data[2] = world_InitialRhand.p.data[2] - (APPROACHING_OFFSET + INSERT_OFFSET); 
