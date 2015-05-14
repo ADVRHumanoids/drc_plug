@@ -109,11 +109,7 @@ walkman::drc::plug::plug_stack::plug_stack(const double dT,
         new tasks::velocity::MinimizeAcceleration(q));
 
     /* POSTURAL TASK FOR TORSO */
-    postural.reset(
-        new tasks::velocity::Postural(q));
-//     SubTask::Ptr postural_torso(
-//         new OpenSoT::SubTask(postural,
-//                              OpenSoT::SubTask::SubTaskMap(model.torso.joint_numbers)));
+    postural.reset(new tasks::velocity::Postural(q));
     yarp::sig::Vector zero(q.size(),0.0);
     zero[model.left_arm.joint_numbers[1]] = 20 * M_PI/180.0;
     zero[model.right_arm.joint_numbers[1]] = -20 * M_PI/180.0;

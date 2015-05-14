@@ -36,7 +36,7 @@
 #define PIN_HAND_Y 0.05
 #define PIN_HAND_Z 0
 
-walkman::drc::plug::plug_actions::plug_actions()
+walkman::drc::plug::plug_actions::plug_actions(iDynUtils& model_): model(model_)
 {
     cmd_data_map["valvedatasent"] = &valve_data;
     cmd_data_map["buttondatasent"] = &button_data;
@@ -71,13 +71,16 @@ void walkman::drc::plug::plug_actions::init(OpenSoT::tasks::velocity::Cartesian:
 					      OpenSoT::tasks::velocity::Cartesian::Ptr r_arm_task,
 					      OpenSoT::tasks::velocity::Cartesian::Ptr r_foot_task,
 					      OpenSoT::tasks::velocity::CoM::Ptr com_task_,
-					      OpenSoT::tasks::velocity::Cartesian::Ptr pelvis_task_)
+					      OpenSoT::tasks::velocity::Cartesian::Ptr pelvis_task_,
+					      OpenSoT::tasks::velocity::Postural::Ptr postural_task_
+ 					  )
 {
     left_arm_task = l_arm_task;
     right_arm_task = r_arm_task;
     right_foot_task = r_foot_task;
     com_task = com_task_;
     pelvis_task = pelvis_task_; 
+    postural_task = postural_task_;
     
     // SET HOME POSITION
     YarptoKDL(left_arm_task->getActualPose(), world_HomePositionL);
@@ -182,12 +185,7 @@ bool walkman::drc::plug::plug_actions::init_reaching()
 {      
     YarptoKDL(left_arm_task->getActualPose(), world_InitialLhand);  
     YarptoKDL(right_arm_task->getActualPose(), world_InitialRhand);
-//     YarptoKDL(com_task->getActualPosition(), world_InitialCom.p);
     YarptoKDL(pelvis_task->getActualPose(), world_InitialPelvis);
-    
-//     world_FinalCom = world_InitialCom;
-//     world_FinalCom.p.data[2] -= 0.1;
-//     com_generator.line_initialize(5.0, world_InitialCom,world_FinalCom); 
     
     world_FinalPelvis = world_InitialPelvis;
     
@@ -216,7 +214,10 @@ bool walkman::drc::plug::plug_actions::init_reaching()
 	
 	right_arm_generator.line_initialize(5.0, world_InitialRhand,world_FinalRhand); 
     }
-     
+    
+    yarp::sig::Vector q_now = postural_task->getReference();
+    yaw_init = q_now(model.torso.joint_numbers[2]);
+    
     initialized_time=yarp::os::Time::now();
     
     return true;
@@ -224,6 +225,7 @@ bool walkman::drc::plug::plug_actions::init_reaching()
 
 bool walkman::drc::plug::plug_actions::perform_reaching()
 {
+    double Tf = 5.0;
     auto time = yarp::os::Time::now()-initialized_time;
     KDL::Frame Xd_L, Xd_R, Xd_c, Xd_p;
     KDL::Twist dXd_L, dXd_R, dXd_c, dXd_p;
@@ -236,14 +238,24 @@ bool walkman::drc::plug::plug_actions::perform_reaching()
 	right_arm_generator.line_trajectory(time,Xd_R,dXd_R);
 	right_arm_task->setReference( KDLtoYarp_position( Xd_R ) );    
     }
-//     com_generator.line_trajectory(time,Xd_c,dXd_c);
-//     yarp::sig::Vector p_CoM;
-//     KDLtoYarp(Xd_c.p , p_CoM);
-//     com_task->setReference(p_CoM);
 
     pelvis_generator.line_trajectory(time,Xd_p,dXd_p);
     pelvis_task->setReference( KDLtoYarp_position( Xd_p ) );
    
+    double yaw_d, yaw_now, delta_yaw;
+    yarp::sig::Vector q_now = postural_task->getReference();
+    yaw_now = q_now(model.torso.joint_numbers[2]);
+    yaw_d = valve_data[YAW_INDEX];
+    joints_traj_gen.polynomial_interpolation(poly, yaw_d - yaw_now, Tf, time);
+
+    if(time <= Tf)
+	delta_yaw = joints_traj_gen.polynomial_interpolation(poly,yaw_d-yaw_now,time,Tf);
+    else
+	delta_yaw = joints_traj_gen.polynomial_interpolation(poly,yaw_d-yaw_now,Tf,Tf);
+    
+    q_now[model.torso.joint_numbers[2]] = yaw_init + delta_yaw;
+    postural_task->setReference(q_now);
+    
     return true;
 }
 

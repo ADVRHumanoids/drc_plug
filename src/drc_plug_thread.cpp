@@ -21,7 +21,7 @@ drc_plug_thread::drc_plug_thread( std::string module_prefix,
     command_interface( module_prefix ),
     status_interface( module_prefix ),
     q_left_desired(1),q_right_desired(1),
-    plug_traj(),real_robot(get_robot_name(),get_urdf_path(),get_srdf_path())
+    plug_traj(model),real_robot(get_robot_name(),get_urdf_path(),get_srdf_path())
 {
   //STATE MACHINE
     std::vector<std::tuple<state,std::string,state>> transition_table{
@@ -134,7 +134,8 @@ bool drc_plug_thread::custom_init()
                    auto_stack->right_arm_task,
                    auto_stack->right_foot_task,
                    auto_stack->com_task,
-                   auto_stack->pelvis_task);
+                   auto_stack->pelvis_task,
+                   auto_stack->postural);
     
     robot.left_arm.setPositionDirectMode();
     robot.left_leg.setPositionDirectMode();
@@ -157,9 +158,6 @@ void drc_plug_thread::init_actions(state new_state)
     }
     if ( new_state == state::reaching)
     {	
-	yarp::sig::Vector q_ref(auto_stack->postural->getReference());
-        q_ref[model.torso.joint_numbers[2]] = postural_yaw;
-        auto_stack->postural->setReference(q_ref); 	
 	plug_traj.init_reaching();
     }
     if ( new_state == state::approaching)
@@ -192,9 +190,6 @@ void drc_plug_thread::init_actions(state new_state)
 
     if ( new_state == state::safe_exiting )
     {
-	yarp::sig::Vector q_ref(auto_stack->postural->getReference());
-        q_ref[model.torso.joint_numbers[2]] = 0.0;
-        auto_stack->postural->setReference(q_ref); 	
 	plug_traj.init_safe_exiting();
     }
 }
