@@ -304,7 +304,6 @@ bool walkman::drc::plug::plug_actions::init_rotating(double angle)
     std::cout<<"Radius from pin to valve: "<<radius_pin<<std::endl;
     
     KDL::Frame world_OffsetValve = world_Valve;
-    world_OffsetValve.p.data[1] -= PIN_HAND_Y;
     
     KDL::Twist dXd_L, dXd_R;
     
@@ -313,12 +312,14 @@ bool walkman::drc::plug::plug_actions::init_rotating(double angle)
     
     if (left_arm_controlled)
     {
+    world_OffsetValve.p.data[1] -= PIN_HAND_Y;
 	left_arm_generator.circle_initialize( T_f, radius_pin, -rot_amount * DEG2RAD, world_InitialLhand, world_OffsetValve);
 	left_arm_generator.circle_trajectory(T_f + 1.0, world_FinalLhand, dXd_L);
     }
 
     if (right_arm_controlled)
     {
+    world_OffsetValve.p.data[1] += PIN_HAND_Y;
 	right_arm_generator.circle_initialize(T_f, radius_pin, -rot_amount * DEG2RAD, world_InitialRhand, world_OffsetValve);
 	right_arm_generator.circle_trajectory(T_f + 1.0, world_FinalRhand, dXd_R);
     }
