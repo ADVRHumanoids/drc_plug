@@ -74,6 +74,7 @@ namespace walkman
 		OpenSoT::solvers::QPOases_sot::Ptr solver;
                 
                 plug_stack::Ptr auto_stack;
+		double postural_yaw;
 		
 	    public:
 		
