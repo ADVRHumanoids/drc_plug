@@ -4,7 +4,7 @@
 #include <sys/time.h>
 #include <assert.h>
 #include <iostream>
-
+#include <iCub/iDynTree/yarp_kdl.h>
 #include "drc_plug_thread.h"
 #include "drc_plug_constants.h"
 
@@ -21,7 +21,7 @@ drc_plug_thread::drc_plug_thread( std::string module_prefix,
     command_interface( module_prefix ),
     status_interface( module_prefix ),
     q_left_desired(1),q_right_desired(1),
-    plug_traj()
+    plug_traj(),real_robot(get_robot_name(),get_urdf_path(),get_srdf_path())
 {
   //STATE MACHINE
     std::vector<std::tuple<state,std::string,state>> transition_table{
@@ -79,6 +79,8 @@ drc_plug_thread::drc_plug_thread( std::string module_prefix,
     seq_num = 0;
     status_seq_num = 0;
 
+    fs.open ("plug_debug_trj.m", std::fstream::out);
+    fs1.open ("plug_debug_jnt.m", std::fstream::out);
 }
 
 bool drc_plug_thread::custom_init()
@@ -115,7 +117,7 @@ bool drc_plug_thread::custom_init()
     // NOTE why is working with the floating base set in the left foot?
     model.iDyn3_model.setFloatingBaseLink(model.left_leg.end_effector_index);
     model.updateiDyn3Model(input.q, true);
-    
+
     // SOT INITIALIZATION
     // tasks initialization
     fixed_frame = "l_sole";
@@ -144,7 +146,7 @@ bool drc_plug_thread::custom_init()
 	robot.left_hand.setPositionDirectMode();
     if(robot.right_hand.isAvailable)
 	robot.right_hand.setPositionDirectMode();
-    
+
     return true;
 }
 
@@ -286,6 +288,20 @@ void drc_plug_thread::run()
 void drc_plug_thread::sense()
 {
     input.q = output.q;
+    
+    //FAKE ROBOT
+    yarp::sig::Vector real_joints = robot.sensePosition();
+    real_robot.iDyn3_model.setAng(real_joints);
+    real_robot.iDyn3_model.computePositions();
+    
+    KDL::Frame LeftFoot_LeftHand = real_robot.iDyn3_model.getPositionKDL(real_robot.left_leg.end_effector_index,real_robot.left_arm.end_effector_index);
+    
+    static int i=1;
+    if(current_state == walkman::drc::plug::state::rotating) fs<<"LF_LH_real("<<i<<",:)=["<<LeftFoot_LeftHand.p.x()<<' '<<LeftFoot_LeftHand.p.y()<<' '<<LeftFoot_LeftHand.p.z()<<"];\n";
+    
+//     YarptoKDL(auto_stack->left_arm_task->getActualPose(),LeftFoot_LeftHand);
+    LeftFoot_LeftHand = model.iDyn3_model.getPositionKDL(model.left_leg.end_effector_index,model.left_arm.end_effector_index);
+    if(current_state == walkman::drc::plug::state::rotating) fs<<"LF_LH_SoT("<<i++<<",:)=["<<LeftFoot_LeftHand.p.x()<<' '<<LeftFoot_LeftHand.p.y()<<' '<<LeftFoot_LeftHand.p.z()<<"];\n";
 }
 
 void drc_plug_thread::control_law()
@@ -331,13 +347,27 @@ void drc_plug_thread::control_law()
 
 void drc_plug_thread::move()
 {
-    yarp::sig::Vector q_torso(3), q_left_arm(7), q_right_arm(7), q_left_leg(6), q_right_leg(6), q_head(2);
+    yarp::sig::Vector real_joints = robot.sensePosition();
+    
+    
+    yarp::sig::Vector q_torso(3), q_left_arm(7), q_left_arm_real(7), q_right_arm(7), q_left_leg(6), q_right_leg(6), q_head(2);
     robot.fromIdynToRobot(output.q, q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head);
     robot.right_arm.move(q_right_arm);
-    robot.left_arm.move(q_left_arm);
     robot.torso.move(q_torso);
     robot.left_leg.move(q_left_leg);
     robot.right_leg.move(q_right_leg);
+    
+    robot.fromIdynToRobot(real_joints, q_right_arm, q_left_arm_real, q_torso, q_right_leg, q_left_leg, q_head);
+    robot.left_arm.move((q_left_arm-q_left_arm_real)*1.0 + q_left_arm_real);
+    
+    yarp::sig::Vector real_q = robot.left_arm.sensePosition();
+    
+    static int i=1;
+    if(current_state == walkman::drc::plug::state::rotating)
+        fs1<<"Jnt_real("<<i<<",:)=["<<q_left_arm[0]<<' '<<q_left_arm[1]<<' '<<q_left_arm[2]<<' '<<q_left_arm[3]<<' '<<q_left_arm[4]<<' '<<q_left_arm[5]<<' '<<q_left_arm[6]<<"];\n";
+    q_left_arm = real_q;
+    if(current_state == walkman::drc::plug::state::rotating) 
+        fs1<<"Jnt_SoT("<<i++<<",:)=["<<q_left_arm[0]<<' '<<q_left_arm[1]<<' '<<q_left_arm[2]<<' '<<q_left_arm[3]<<' '<<q_left_arm[4]<<' '<<q_left_arm[5]<<' '<<q_left_arm[6]<<"];\n";
 }
 
 bool drc_plug_thread::move_hands(double close)

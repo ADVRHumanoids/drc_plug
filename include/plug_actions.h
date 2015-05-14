@@ -90,6 +90,7 @@ namespace walkman
 		
 		bool left_arm_controlled;
 		bool right_arm_controlled;
+        std::fstream fs;
 		
 	    };
 	}
