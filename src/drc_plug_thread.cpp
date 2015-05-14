@@ -154,7 +154,10 @@ void drc_plug_thread::init_actions(state new_state)
     {
     }
     if ( new_state == state::reaching)
-    {
+    {	
+	yarp::sig::Vector q_ref(auto_stack->postural->getReference());
+        q_ref[model.torso.joint_numbers[2]] = postural_yaw;
+        auto_stack->postural->setReference(q_ref); 	
 	plug_traj.init_reaching();
     }
     if ( new_state == state::approaching)
@@ -187,6 +190,9 @@ void drc_plug_thread::init_actions(state new_state)
 
     if ( new_state == state::safe_exiting )
     {
+	yarp::sig::Vector q_ref(auto_stack->postural->getReference());
+        q_ref[model.torso.joint_numbers[2]] = 0.0;
+        auto_stack->postural->setReference(q_ref); 	
 	plug_traj.init_safe_exiting();
     }
 }
@@ -227,6 +233,9 @@ void drc_plug_thread::run()
     {
 	std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Valve data received ..." << std::endl;
 	plug_traj.get_data(plug_cmd.command, plug_cmd.frame, plug_cmd.valve_data, model);
+	double ro,pi,ya;
+	plug_cmd.valve_data.M.GetRPY(ro,pi,ya);
+	postural_yaw = ya;
     }   
     if (plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_BUTTON_DATA_SENT ) 
     {

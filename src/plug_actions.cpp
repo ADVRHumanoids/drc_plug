@@ -367,8 +367,10 @@ bool walkman::drc::plug::plug_actions::init_moving_away()
     }
     if (right_arm_controlled) // TODO SAME AS THE LEFT ARM
     {
-        world_FinalRhand = world_InitialRhand;
-        world_FinalRhand.p.data[2] = world_InitialRhand.p.data[2] - (APPROACHING_OFFSET + INSERT_OFFSET); 
+	KDL::Frame HandRotated_Hand, world_HandRotated;
+        world_HandRotated = world_InitialRhand;
+	HandRotated_Hand.p = KDL::Vector(0,0,APPROACHING_OFFSET + INSERT_OFFSET);
+	world_FinalRhand = world_HandRotated * HandRotated_Hand;
         right_arm_generator.line_initialize(5.0, world_InitialRhand,world_FinalRhand); 
     }
      
