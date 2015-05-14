@@ -26,7 +26,7 @@ drc_plug_thread::drc_plug_thread( std::string module_prefix,
   //STATE MACHINE
     std::vector<std::tuple<state,std::string,state>> transition_table{
         //--------------initial state ----------+--------- command ---------------------------+------ final state--------- +
-        std::make_tuple( state::idle            ,   WALKMAN_DRC_PLUG_COMMAND_BUTTON_DATA_SENT ,    state::ready           ),
+        std::make_tuple( state::idle            ,   WALKMAN_DRC_PLUG_COMMAND_BUTTON_DATA_SENT ,    state::ready            ),
         //--------------------------------------+---------------------------------------------+----------------------------+
 	std::make_tuple( state::ready           ,   WALKMAN_DRC_PLUG_COMMAND_REACH            ,    state::reaching         ),
         //--------------------------------------+---------------------------------------------+----------------------------+
@@ -221,23 +221,35 @@ void drc_plug_thread::run()
     if ( plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_RIGHT ) {
         std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Using RIGHT hand to open the valve ..." << std::endl;
 	plug_traj.set_controlled_arms(false,true);
+// 	std::vector<bool> left_arm_active_joints = auto_stack->left_arm_task->getActiveJointsMask();
+// 	for(unsigned int i = 0; i < left_arm_active_joints.size(); ++i)
+// 	    left_arm_active_joints[i] = false;
+// 	left_arm_active_joints = auto_stack->right_arm_task->getActiveJointsMask();
+// 	for(unsigned int i = 0; i < left_arm_active_joints.size(); ++i)
+// 	    left_arm_active_joints[i] = true;
+// 	auto_stack->right_arm_task->setActiveJointsMask(left_arm_active_joints);
     }
     if ( plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_LEFT ) {
         std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Using LEFT hand to open the valve ..." << std::endl;
 	plug_traj.set_controlled_arms(true,false);
+// 	std::vector<bool> rigth_arm_active_joints = auto_stack->right_arm_task->getActiveJointsMask();
+// 	for(unsigned int i = 0; i < rigth_arm_active_joints.size(); ++i)
+// 	    rigth_arm_active_joints[i] = false;
+// 	auto_stack->right_arm_task->setActiveJointsMask(rigth_arm_active_joints);
+// 	rigth_arm_active_joints = auto_stack->left_arm_task->getActiveJointsMask();
+// 	for(unsigned int i = 0; i < rigth_arm_active_joints.size(); ++i)
+// 	    rigth_arm_active_joints[i] = true;
+// 	auto_stack->left_arm_task->setActiveJointsMask(rigth_arm_active_joints);
     }
     if (plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_VALVE_DATA_SENT ) 
     {
 	std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Valve data received ..." << std::endl;
-	plug_traj.get_data(plug_cmd.command, plug_cmd.frame, plug_cmd.valve_data, model);
-	double ro,pi,ya;
-	plug_cmd.valve_data.M.GetRPY(ro,pi,ya);
-	postural_yaw = ya;
+	plug_traj.get_data(plug_cmd.command, plug_cmd.frame, plug_cmd.valve_data);
     }   
     if (plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_BUTTON_DATA_SENT ) 
     {
         std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Valve point to reach  data received ..." << std::endl;
-        plug_traj.get_data(plug_cmd.command, plug_cmd.frame, plug_cmd.button_data, model);
+        plug_traj.get_data(plug_cmd.command, plug_cmd.frame, plug_cmd.button_data);
     }
     if ( plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_SAFE_EXIT ) {
         std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Exiting Safely ..." << std::endl;

@@ -56,6 +56,7 @@ namespace walkman
 		
 		iDynUtils model;
 		double yaw_init;
+                double radius_pin;
 		
 		void compute_cartesian_error(KDL::Frame Start, KDL::Frame Target, KDL::Vector& position_error, KDL::Vector& orientation_error);
 
@@ -71,7 +72,7 @@ namespace walkman
 			   OpenSoT::tasks::velocity::Postural::Ptr
  			);
 		
-                bool get_data(std::string command, std::string Frame, KDL::Frame object_data_, iDynUtils& model_);
+                bool get_data(std::string command, std::string Frame, KDL::Frame object_data_);
 		std::string ref_frame;
 		                
 		void set_controlled_arms(bool left_arm, bool right_arm);

@@ -141,7 +141,7 @@ void walkman::drc::plug::plug_actions::get_com_cartesian_error(KDL::Vector& posi
 }
 
 // TODO
-bool walkman::drc::plug::plug_actions::get_data(std::string command, std::string Frame, KDL::Frame object_data_, iDynUtils& model_)
+bool walkman::drc::plug::plug_actions::get_data(std::string command, std::string Frame, KDL::Frame object_data_)
 {
     KDL::Frame  World_data;
     ref_frame = Frame;
@@ -149,8 +149,8 @@ bool walkman::drc::plug::plug_actions::get_data(std::string command, std::string
     {
         KDL::Frame Frame_data, Anchor_World, Anchor_Frame;
         Frame_data = object_data_;
-        Anchor_World = model_.getAnchor_T_World();
-        Anchor_Frame = model_.iDyn3_model.getPositionKDL(model_.iDyn3_model.getLinkIndex(model_.getAnchor()),model_.iDyn3_model.getLinkIndex(ref_frame));
+        Anchor_World = model.getAnchor_T_World();
+        Anchor_Frame = model.iDyn3_model.getPositionKDL(model.iDyn3_model.getLinkIndex(model.getAnchor()),model.iDyn3_model.getLinkIndex(ref_frame));
         World_data = Anchor_World.Inverse() * Anchor_Frame * Frame_data;
     }
     else if (ref_frame == "world")
@@ -183,6 +183,16 @@ bool walkman::drc::plug::plug_actions::get_data(std::string command, std::string
 
 bool walkman::drc::plug::plug_actions::init_reaching()
 {      
+  
+    double radius_hand = sqrt( pow((world_Valve.p.x()-world_Button.p.x()),2) 
+			+ pow((world_Valve.p.y()-(world_Button.p.y()+PIN_HAND_Y)),2) 
+			+ pow((world_Valve.p.z()-world_Button.p.z()),2));
+    radius_pin = sqrt( pow((world_Valve.p.x()-world_Button.p.x()),2) 
+			+ pow((world_Valve.p.y()-world_Button.p.y()),2) 
+			+ pow((world_Valve.p.z()-world_Button.p.z()),2));
+//     std::cout<<"Radius from hand to valve: "<<radius_hand<<std::endl;
+    std::cout<<"Radius from pin to valve: "<<radius_pin<<std::endl;
+    
     YarptoKDL(left_arm_task->getActualPose(), world_InitialLhand);  
     YarptoKDL(right_arm_task->getActualPose(), world_InitialRhand);
     YarptoKDL(pelvis_task->getActualPose(), world_InitialPelvis);
@@ -306,14 +316,6 @@ bool walkman::drc::plug::plug_actions::init_rotating(double angle)
 {
     double rot_amount = angle;
     double T_f = angle/10;
-    double radius_hand = sqrt( pow((world_Valve.p.x()-world_Button.p.x()),2) 
-			+ pow((world_Valve.p.y()-(world_Button.p.y()+PIN_HAND_Y)),2) 
-			+ pow((world_Valve.p.z()-world_Button.p.z()),2));
-    double radius_pin = sqrt( pow((world_Valve.p.x()-world_Button.p.x()),2) 
-			+ pow((world_Valve.p.y()-world_Button.p.y()),2) 
-			+ pow((world_Valve.p.z()-world_Button.p.z()),2));
-    std::cout<<"Radius from hand to valve: "<<radius_hand<<std::endl;
-    std::cout<<"Radius from pin to valve: "<<radius_pin<<std::endl;
     
     KDL::Frame world_OffsetValve = world_Valve;
     world_OffsetValve.p.data[1] -= PIN_HAND_Y;
@@ -427,11 +429,15 @@ bool walkman::drc::plug::plug_actions::init_safe_exiting()
 
     initialized_time=yarp::os::Time::now();
     
+    yarp::sig::Vector q_now = postural_task->getReference();
+    yaw_init = q_now(model.torso.joint_numbers[2]);
+    
     return true;
 }
 
 bool walkman::drc::plug::plug_actions::perform_safe_exiting()
 {
+    double Tf = 5.0;
     auto time = yarp::os::Time::now()-initialized_time;
     KDL::Frame Xd_L, Xd_R;
     KDL::Twist dXd_L, dXd_R;
@@ -446,6 +452,20 @@ bool walkman::drc::plug::plug_actions::perform_safe_exiting()
 	right_arm_generator.line_trajectory(time, Xd_R, dXd_R);
 	right_arm_task->setReference( KDLtoYarp_position( Xd_R ) );
     }
+    
+    double yaw_d, yaw_now, delta_yaw;
+    yarp::sig::Vector q_now = postural_task->getReference();
+    yaw_now = q_now(model.torso.joint_numbers[2]);
+    yaw_d = 0.0;
+    joints_traj_gen.polynomial_interpolation(poly, yaw_d - yaw_now, Tf, time);
 
+    if(time <= Tf)
+	delta_yaw = joints_traj_gen.polynomial_interpolation(poly,yaw_d-yaw_now,time,Tf);
+    else
+	delta_yaw = joints_traj_gen.polynomial_interpolation(poly,yaw_d-yaw_now,Tf,Tf);
+    
+    q_now[model.torso.joint_numbers[2]] = yaw_init + delta_yaw;
+    postural_task->setReference(q_now);
+    
     return true;
 }
