@@ -59,8 +59,6 @@ drc_plug_thread::drc_plug_thread( std::string module_prefix,
     state_map[state::reached] = "reached";
     state_map[state::approaching] = "approaching";
     state_map[state::approached] = "approached";
-    state_map[state::ungrasping] = "ungrasping";
-    state_map[state::ungrasped] = "ungrasped";
     state_map[state::rotating] = "rotating";
     state_map[state::rotated] = "rotated";
     state_map[state::moving_away] = "moving_away";
