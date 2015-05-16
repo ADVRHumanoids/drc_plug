@@ -14,6 +14,11 @@ using namespace yarp::os;
 using namespace yarp::sig;
 using namespace walkman::drc::plug;
 
+double left_offset[7] = {-0.001878101, -0.087266425, -0.00541460025, -0.04116454775, -0.0270602895, 0.05685963075, 0.05985226625};
+double right_offset[7] = {0.00496249625, 0.01221735225, 0.023223271, -0.01633125525, -0.04591635675, 0.0131223505, -0.0860596935};
+yarp::sig::Vector left_arm_offset(7,left_offset);
+yarp::sig::Vector right_arm_offset(7,right_offset);
+
 drc_plug_thread::drc_plug_thread( std::string module_prefix, 
                              			yarp::os::ResourceFinder rf, 
                              			std::shared_ptr< paramHelp::ParamHelperServer > ph) :
@@ -286,6 +291,14 @@ void drc_plug_thread::run()
 void drc_plug_thread::sense()
 {
     input.q = output.q;
+
+    yarp::sig::Vector q_torso(3), q_left_arm(7), q_right_arm(7), q_left_leg(6), q_right_leg(6), q_head(2);
+    robot.fromIdynToRobot(input.q, q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head);    
+    //OFFSET 
+    q_left_arm = q_left_arm - left_arm_offset;
+    q_right_arm = q_right_arm - right_arm_offset;
+    
+    robot.fromRobotToIdyn(q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head, input.q);
 }
 
 void drc_plug_thread::control_law()
@@ -333,6 +346,11 @@ void drc_plug_thread::move()
 {
     yarp::sig::Vector q_torso(3), q_left_arm(7), q_right_arm(7), q_left_leg(6), q_right_leg(6), q_head(2);
     robot.fromIdynToRobot(output.q, q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head);
+    
+    //OFFSET 
+    q_left_arm = q_left_arm + left_arm_offset;
+    q_right_arm = q_right_arm + right_arm_offset;
+    
     robot.right_arm.move(q_right_arm);
     robot.left_arm.move(q_left_arm);
     robot.torso.move(q_torso);
