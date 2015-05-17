@@ -419,7 +419,12 @@ bool walkman::drc::plug::plug_actions::init_safe_exiting()
 {
     YarptoKDL(right_arm_task->getActualPose(), world_InitialRhand);
     YarptoKDL(left_arm_task->getActualPose(), world_InitialLhand);
-
+    YarptoKDL(pelvis_task->getActualPose(), world_InitialPelvis);
+    
+    world_FinalPelvis = world_InitialPelvis;
+    world_FinalPelvis.p.data[2] = 1.05;
+    pelvis_generator.line_initialize(5.0, world_InitialPelvis,world_FinalPelvis); 
+    
     world_FinalRhand = world_HomePositionR;
     world_FinalLhand = world_HomePositionL;
     
@@ -440,8 +445,8 @@ bool walkman::drc::plug::plug_actions::perform_safe_exiting()
 {
     double Tf = 5.0;
     auto time = yarp::os::Time::now()-initialized_time;
-    KDL::Frame Xd_L, Xd_R;
-    KDL::Twist dXd_L, dXd_R;
+    KDL::Frame Xd_L, Xd_R, Xd_p;
+    KDL::Twist dXd_L, dXd_R, dXd_p;
 
     if (left_arm_controlled)
     {
@@ -453,6 +458,8 @@ bool walkman::drc::plug::plug_actions::perform_safe_exiting()
 	right_arm_generator.line_trajectory(time, Xd_R, dXd_R);
 	right_arm_task->setReference( KDLtoYarp_position( Xd_R ) );
     }
+    pelvis_generator.line_trajectory(time,Xd_p,dXd_p);
+    pelvis_task->setReference( KDLtoYarp_position( Xd_p ) );
     
     double yaw_d, yaw_now, delta_yaw;
     yarp::sig::Vector q_now = postural_task->getReference();
