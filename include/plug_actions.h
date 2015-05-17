@@ -54,7 +54,7 @@ namespace walkman
 
 		double initialized_time;
 		
-		iDynUtils model;
+		iDynUtils& model;
 		double yaw_init;
                 double radius_pin;
 		
