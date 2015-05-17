@@ -31,7 +31,7 @@ drc_plug_thread::drc_plug_thread( std::string module_prefix,
   //STATE MACHINE
     std::vector<std::tuple<state,std::string,state>> transition_table{
         //--------------initial state ----------+--------- command ---------------------------+------ final state--------- +
-        std::make_tuple( state::idle            ,   WALKMAN_DRC_PLUG_COMMAND_BUTTON_DATA_SENT ,    state::ready           ),
+        std::make_tuple( state::idle            ,   WALKMAN_DRC_PLUG_COMMAND_BUTTON_DATA_SENT ,    state::ready            ),
         //--------------------------------------+---------------------------------------------+----------------------------+
 	std::make_tuple( state::ready           ,   WALKMAN_DRC_PLUG_COMMAND_REACH            ,    state::reaching         ),
         //--------------------------------------+---------------------------------------------+----------------------------+
@@ -64,8 +64,6 @@ drc_plug_thread::drc_plug_thread( std::string module_prefix,
     state_map[state::reached] = "reached";
     state_map[state::approaching] = "approaching";
     state_map[state::approached] = "approached";
-    state_map[state::ungrasping] = "ungrasping";
-    state_map[state::ungrasped] = "ungrasped";
     state_map[state::rotating] = "rotating";
     state_map[state::rotated] = "rotated";
     state_map[state::moving_away] = "moving_away";
@@ -139,7 +137,8 @@ bool drc_plug_thread::custom_init()
                    auto_stack->right_arm_task,
                    auto_stack->right_foot_task,
                    auto_stack->com_task,
-                   auto_stack->pelvis_task);
+                   auto_stack->pelvis_task,
+                   auto_stack->postural);
     
     robot.left_arm.setPositionDirectMode();
     robot.left_leg.setPositionDirectMode();
@@ -161,7 +160,7 @@ void drc_plug_thread::init_actions(state new_state)
     {
     }
     if ( new_state == state::reaching)
-    {
+    {	
 	plug_traj.init_reaching();
     }
     if ( new_state == state::approaching)
@@ -225,20 +224,35 @@ void drc_plug_thread::run()
     if ( plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_RIGHT ) {
         std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Using RIGHT hand to open the valve ..." << std::endl;
 	plug_traj.set_controlled_arms(false,true);
+// 	std::vector<bool> left_arm_active_joints = auto_stack->left_arm_task->getActiveJointsMask();
+// 	for(unsigned int i = 0; i < left_arm_active_joints.size(); ++i)
+// 	    left_arm_active_joints[i] = false;
+// 	left_arm_active_joints = auto_stack->right_arm_task->getActiveJointsMask();
+// 	for(unsigned int i = 0; i < left_arm_active_joints.size(); ++i)
+// 	    left_arm_active_joints[i] = true;
+// 	auto_stack->right_arm_task->setActiveJointsMask(left_arm_active_joints);
     }
     if ( plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_LEFT ) {
         std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Using LEFT hand to open the valve ..." << std::endl;
 	plug_traj.set_controlled_arms(true,false);
+// 	std::vector<bool> rigth_arm_active_joints = auto_stack->right_arm_task->getActiveJointsMask();
+// 	for(unsigned int i = 0; i < rigth_arm_active_joints.size(); ++i)
+// 	    rigth_arm_active_joints[i] = false;
+// 	auto_stack->right_arm_task->setActiveJointsMask(rigth_arm_active_joints);
+// 	rigth_arm_active_joints = auto_stack->left_arm_task->getActiveJointsMask();
+// 	for(unsigned int i = 0; i < rigth_arm_active_joints.size(); ++i)
+// 	    rigth_arm_active_joints[i] = true;
+// 	auto_stack->left_arm_task->setActiveJointsMask(rigth_arm_active_joints);
     }
     if (plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_VALVE_DATA_SENT ) 
     {
 	std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Valve data received ..." << std::endl;
-	plug_traj.get_data(plug_cmd.command, plug_cmd.frame, plug_cmd.valve_data, model);
+	plug_traj.get_data(plug_cmd.command, plug_cmd.frame, plug_cmd.valve_data);
     }   
     if (plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_BUTTON_DATA_SENT ) 
     {
         std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Valve point to reach  data received ..." << std::endl;
-        plug_traj.get_data(plug_cmd.command, plug_cmd.frame, plug_cmd.button_data, model);
+        plug_traj.get_data(plug_cmd.command, plug_cmd.frame, plug_cmd.button_data);
     }
     if ( plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_SAFE_EXIT ) {
         std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Exiting Safely ..." << std::endl;
@@ -301,6 +315,20 @@ void drc_plug_thread::sense()
     q_right_arm = q_right_arm - right_arm_offset;
     
     robot.fromRobotToIdyn(q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head, input.q);
+    
+    //FAKE ROBOT
+    yarp::sig::Vector real_joints = robot.sensePosition();
+    real_robot.iDyn3_model.setAng(real_joints);
+    real_robot.iDyn3_model.computePositions();
+    
+    KDL::Frame LeftFoot_LeftHand = real_robot.iDyn3_model.getPositionKDL(real_robot.left_leg.end_effector_index,real_robot.left_arm.end_effector_index);
+    
+    static int i=1;
+    if(current_state == walkman::drc::plug::state::rotating) fs<<"LF_LH_real("<<i<<",:)=["<<LeftFoot_LeftHand.p.x()<<' '<<LeftFoot_LeftHand.p.y()<<' '<<LeftFoot_LeftHand.p.z()<<"];\n";
+    
+//     YarptoKDL(auto_stack->left_arm_task->getActualPose(),LeftFoot_LeftHand);
+    LeftFoot_LeftHand = model.iDyn3_model.getPositionKDL(model.left_leg.end_effector_index,model.left_arm.end_effector_index);
+    if(current_state == walkman::drc::plug::state::rotating) fs<<"LF_LH_SoT("<<i++<<",:)=["<<LeftFoot_LeftHand.p.x()<<' '<<LeftFoot_LeftHand.p.y()<<' '<<LeftFoot_LeftHand.p.z()<<"];\n";
 }
 
 void drc_plug_thread::control_law()

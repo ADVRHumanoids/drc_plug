@@ -73,7 +73,30 @@ walkman::drc::plug::plug_stack::plug_stack(const double dT,
     com_weight.eye();
     com_weight(2,2) = 0.0;
     com_task->setWeight(com_weight);
-
+    
+    std::vector<bool> com_active_joints = com_task->getActiveJointsMask();
+    for(unsigned int i = 0; i < com_active_joints.size(); ++i){
+        std::vector<unsigned int>::iterator it = std::find(
+            model.right_arm.joint_numbers.begin(),
+            model.right_arm.joint_numbers.end(),
+            i);
+        if(it != model.right_arm.joint_numbers.end())
+            com_active_joints[i] = false;
+        else
+            com_active_joints[i] = true;
+    }
+    for(unsigned int i = 0; i < com_active_joints.size(); ++i){
+        std::vector<unsigned int>::iterator it = std::find(
+            model.left_arm.joint_numbers.begin(),
+            model.left_arm.joint_numbers.end(),
+            i);
+        if(it != model.left_arm.joint_numbers.end())
+            com_active_joints[i] = false;
+        else
+            com_active_joints[i] = true;
+    }
+    com_task->setActiveJointsMask(com_active_joints);
+    
     /* MANIPULABILITY TASKS */
     tasks::velocity::Manipulability::Ptr manip_left_arm_task(
         new tasks::velocity::Manipulability(q, model, left_arm_task));
@@ -86,23 +109,13 @@ walkman::drc::plug::plug_stack::plug_stack(const double dT,
         new tasks::velocity::MinimizeAcceleration(q));
 
     /* POSTURAL TASK FOR TORSO */
-    postural.reset(
-        new tasks::velocity::Postural(q));
-//     SubTask::Ptr postural_torso(
-//         new OpenSoT::SubTask(postural,
-//                              OpenSoT::SubTask::SubTaskMap(model.torso.joint_numbers)));
+    postural.reset(new tasks::velocity::Postural(q));
     yarp::sig::Vector zero(q.size(),0.0);
-//     zero[model.left_arm.joint_numbers[3]] = -60 * M_PI/180.0;
-//     zero[model.right_arm.joint_numbers[3]] = -60 * M_PI/180.0;
     zero[model.left_arm.joint_numbers[1]] = 20 * M_PI/180.0;
     zero[model.right_arm.joint_numbers[1]] = -20 * M_PI/180.0;
     zero[model.left_arm.joint_numbers[3]] = -30 * M_PI/180.0;
     zero[model.right_arm.joint_numbers[3]] = -30 * M_PI/180.0;
     postural->setReference(zero);
-    
-//     yarp::sig::Matrix pW = postural_torso->getWeight();
-//     pW(1,1) *= 10.0; // torso pitch
-//     postural_torso->setWeight(pW);
 
     /* JOINT BOUNDS AND VELOCITY BOUNDS */
     constraints::velocity::JointLimits::Ptr joint_bounds(

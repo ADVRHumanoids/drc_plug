@@ -25,7 +25,7 @@ namespace walkman
                 std::vector<double> button_data;
 		
 		KDL::Frame world_InitialRhand,world_InitialLhand,world_InitialRfoot,world_InitialCom;
-		
+		KDL::Frame world_InitialPelvis, world_FinalPelvis;
 		KDL::Frame world_FinalRhand,world_FinalLhand,world_FinalRfoot,world_FinalCom;
 		KDL::Frame world_Valve, world_Button;
                 KDL::Frame Button_FinalLhand, Button_FinalRhand;
@@ -39,31 +39,40 @@ namespace walkman
 		OpenSoT::tasks::velocity::Cartesian::Ptr right_foot_task;
 		OpenSoT::tasks::velocity::CoM::Ptr com_task;
 		OpenSoT::tasks::velocity::Cartesian::Ptr pelvis_task;
+		OpenSoT::tasks::velocity::Postural::Ptr postural_task;
 		
 		// trajectory generators for all tasks
 		trajectory_generator left_arm_generator;
 		trajectory_generator right_arm_generator;
 		trajectory_generator right_foot_generator;
 		trajectory_generator com_generator;
+		trajectory_generator pelvis_generator;
+		trajectory_generator joints_traj_gen;
+		polynomial_coefficients poly;
 		
                 std::map<std::string, std::vector<double>*> cmd_data_map;
 
 		double initialized_time;
 		
+		iDynUtils& model;
+		double yaw_init;
+                double radius_pin;
+		
 		void compute_cartesian_error(KDL::Frame Start, KDL::Frame Target, KDL::Vector& position_error, KDL::Vector& orientation_error);
 
 	    public:
-		plug_actions();
+		plug_actions(iDynUtils& model_);
 		
 		// initialization: receive sot task from the thread
 		void init( OpenSoT::tasks::velocity::Cartesian::Ptr , 
 			   OpenSoT::tasks::velocity::Cartesian::Ptr ,
 			   OpenSoT::tasks::velocity::Cartesian::Ptr ,
 		           OpenSoT::tasks::velocity::CoM::Ptr,
-			   OpenSoT::tasks::velocity::Cartesian::Ptr 
+			   OpenSoT::tasks::velocity::Cartesian::Ptr ,
+			   OpenSoT::tasks::velocity::Postural::Ptr
  			);
 		
-                bool get_data(std::string command, std::string Frame, KDL::Frame object_data_, iDynUtils& model_);
+                bool get_data(std::string command, std::string Frame, KDL::Frame object_data_);
 		std::string ref_frame;
 		                
 		void set_controlled_arms(bool left_arm, bool right_arm);
