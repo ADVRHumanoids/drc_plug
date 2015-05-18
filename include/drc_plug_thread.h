@@ -58,6 +58,9 @@ namespace walkman
 		
 		robot_state_output output;
 		
+		yarp::sig::Vector wb_input_q, wb_output_q;
+		yarp::sig::Vector left_hand_input_q, right_hand_input_q;
+		
 		state current_state;
 		
 		void init_actions(state new_state);

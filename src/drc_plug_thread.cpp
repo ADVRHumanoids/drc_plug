@@ -14,6 +14,11 @@ using namespace yarp::os;
 using namespace yarp::sig;
 using namespace walkman::drc::plug;
 
+double left_offset[7] = {-0.001878101, -0.087266425, -0.00541460025, -0.04116454775, -0.0270602895, 0.05685963075, 0.05985226625};
+double right_offset[7] = {0.00496249625, 0.01221735225, 0.023223271, -0.01633125525, -0.04591635675, 0.0131223505, -0.0860596935};
+yarp::sig::Vector left_arm_offset(7,left_offset);
+yarp::sig::Vector right_arm_offset(7,right_offset);
+
 drc_plug_thread::drc_plug_thread( std::string module_prefix, 
                              			yarp::os::ResourceFinder rf, 
                              			std::shared_ptr< paramHelp::ParamHelperServer > ph) :
@@ -94,7 +99,17 @@ bool drc_plug_thread::custom_init()
     status_interface.setStatus( status_definitions.status_to_code.at(WALKMAN_DRC_PLUG_STATUS_READY) );	
     
     // sense
-    robot.sense(input.q, input.q_dot, input.tau);
+    //-- using new walkmaninterface --//
+
+    wb_input_q=robot.sensePositionRefFeedback();
+    
+    for(int i=0;i<input.q.size();i++) input.q[i]=wb_input_q[i]; //hands not considered
+
+    left_hand_input_q = wb_input_q[robot.left_hand_index];
+    right_hand_input_q = wb_input_q[robot.right_hand_index];
+    
+    //-- using new walkmaninterface --//
+    
     auto max = model.iDyn3_model.getJointBoundMax();
     auto min = model.iDyn3_model.getJointBoundMin();
     for (int i=0;i<input.q.size();i++)
@@ -121,13 +136,6 @@ bool drc_plug_thread::custom_init()
     fixed_frame = "l_sole";
     create_sot_problem(fixed_frame);
 
-    if(robot.left_hand.isAvailable) { 
-		robot.left_hand.setPositionDirectMode();
-    }
-    if(robot.right_hand.isAvailable) { 
-		robot.right_hand.setPositionDirectMode();
-    }
-    
     plug_traj.init(auto_stack->left_arm_task,
                    auto_stack->right_arm_task,
                    auto_stack->right_foot_task,
@@ -135,16 +143,7 @@ bool drc_plug_thread::custom_init()
                    auto_stack->pelvis_task,
                    auto_stack->postural);
     
-    robot.left_arm.setPositionDirectMode();
-    robot.left_leg.setPositionDirectMode();
-    robot.right_arm.setPositionDirectMode();
-    robot.right_leg.setPositionDirectMode();
-    robot.torso.setPositionDirectMode();
-    
-    if(robot.left_hand.isAvailable)
-	robot.left_hand.setPositionDirectMode();
-    if(robot.right_hand.isAvailable)
-	robot.right_hand.setPositionDirectMode();
+    robot.setPositionDirectMode();
 
     return true;
 }
@@ -302,10 +301,26 @@ void drc_plug_thread::run()
 void drc_plug_thread::sense()
 {
     input.q = output.q;
+
+    yarp::sig::Vector q_torso(3), q_left_arm(7), q_right_arm(7), q_left_leg(6), q_right_leg(6), q_head(2);
+    robot.fromIdynToRobot(input.q, q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head);    
+    //OFFSET 
+    q_left_arm = q_left_arm - left_arm_offset;
+    q_right_arm = q_right_arm - right_arm_offset;
     
-    //FAKE ROBOT
+    robot.fromRobotToIdyn(q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head, input.q);
+    
+    //FAKE ROBOT    
+    //-- using new walkmaninterface --//
+
     yarp::sig::Vector real_joints = robot.sensePosition();
-    real_robot.iDyn3_model.setAng(real_joints);
+    yarp::sig::Vector real_joints_no_hands(real_joints.size()-2,(double*)real_joints.getGslVector());
+    
+//     for(int i=0;i<real_joints_no_hands.size();i++) real_joints_no_hands[i]=real_joints[i];
+    
+    //-- using new walkmaninterface --//
+    
+    real_robot.iDyn3_model.setAng(real_joints_no_hands);
     real_robot.iDyn3_model.computePositions();
     
     KDL::Frame LeftFoot_LeftHand = real_robot.iDyn3_model.getPositionKDL(real_robot.left_leg.end_effector_index,real_robot.left_arm.end_effector_index);
@@ -361,27 +376,27 @@ void drc_plug_thread::control_law()
 
 void drc_plug_thread::move()
 {
-    yarp::sig::Vector real_joints = robot.sensePosition();
-    
-    
     yarp::sig::Vector q_torso(3), q_left_arm(7), q_left_arm_real(7), q_right_arm(7), q_left_leg(6), q_right_leg(6), q_head(2);
     robot.fromIdynToRobot(output.q, q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head);
-    robot.right_arm.move(q_right_arm);
-    robot.torso.move(q_torso);
-    robot.left_leg.move(q_left_leg);
-    robot.right_leg.move(q_right_leg);
     
+    //OFFSET 
+    q_left_arm = q_left_arm + left_arm_offset;
+    q_right_arm = q_right_arm + right_arm_offset;
+
+    robot.fromRobotToIdyn(q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head, wb_output_q);
+    
+    robot.move(wb_output_q);
+
+
+    yarp::sig::Vector real_joints = robot.sensePosition();
     robot.fromIdynToRobot(real_joints, q_right_arm, q_left_arm_real, q_torso, q_right_leg, q_left_leg, q_head);
-    robot.left_arm.move((q_left_arm-q_left_arm_real)*1.0 + q_left_arm_real);
-    
-    yarp::sig::Vector real_q = robot.left_arm.sensePosition();
     
     static int i=1;
     if(current_state == walkman::drc::plug::state::rotating)
-        fs1<<"Jnt_real("<<i<<",:)=["<<q_left_arm[0]<<' '<<q_left_arm[1]<<' '<<q_left_arm[2]<<' '<<q_left_arm[3]<<' '<<q_left_arm[4]<<' '<<q_left_arm[5]<<' '<<q_left_arm[6]<<"];\n";
-    q_left_arm = real_q;
+        fs1<<"Jnt_SoT("<<i<<",:)=["<<q_left_arm[0]<<' '<<q_left_arm[1]<<' '<<q_left_arm[2]<<' '<<q_left_arm[3]<<' '<<q_left_arm[4]<<' '<<q_left_arm[5]<<' '<<q_left_arm[6]<<"];\n";
+    q_left_arm = q_left_arm_real;
     if(current_state == walkman::drc::plug::state::rotating) 
-        fs1<<"Jnt_SoT("<<i++<<",:)=["<<q_left_arm[0]<<' '<<q_left_arm[1]<<' '<<q_left_arm[2]<<' '<<q_left_arm[3]<<' '<<q_left_arm[4]<<' '<<q_left_arm[5]<<' '<<q_left_arm[6]<<"];\n";
+        fs1<<"Jnt_real("<<i++<<",:)=["<<q_left_arm[0]<<' '<<q_left_arm[1]<<' '<<q_left_arm[2]<<' '<<q_left_arm[3]<<' '<<q_left_arm[4]<<' '<<q_left_arm[5]<<' '<<q_left_arm[6]<<"];\n";
 }
 
 bool drc_plug_thread::move_hands(double close)
@@ -390,7 +405,8 @@ bool drc_plug_thread::move_hands(double close)
   {
       if (plug_traj.left_arm_controlled) q_left_desired   = MIN_CLOSURE + close*(MAX_CLOSURE - MIN_CLOSURE); 
       if (plug_traj.right_arm_controlled) q_right_desired = MIN_CLOSURE + close*(MAX_CLOSURE - MIN_CLOSURE);
-      robot.moveHands(q_left_desired,q_right_desired);
+      wb_output_q[robot.left_hand_index] = q_left_desired[0];
+      wb_output_q[robot.right_hand_index] = q_right_desired[0];
       return true;
   }
   else
@@ -415,16 +431,12 @@ void drc_plug_thread::custom_release()
 
 bool drc_plug_thread::hands_in_position()
 {
-    if(robot.hasHands())
-    {
-	yarp::sig::Vector q_left(1);
-	yarp::sig::Vector q_right(1);
-	sense_hands(q_left, q_right);
+    yarp::sig::Vector q_left(1);
+    yarp::sig::Vector q_right(1);
+    sense_hands(q_left, q_right);
 
-	if ( fabs(q_left[0]-q_left_desired[0]) < 0.1 &&  fabs(q_right[0]-q_right_desired[0]) < 0.1 ) return true;	  
-	    return false;
-    }
-    else return true;
+    if ( fabs(q_left[0]-q_left_desired[0]) < 0.1 &&  fabs(q_right[0]-q_right_desired[0]) < 0.1 ) return true;	  
+	return false;
 }
 
 void drc_plug_thread::create_sot_problem(std::string base_frame)
