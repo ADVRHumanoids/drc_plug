@@ -206,7 +206,7 @@ bool walkman::drc::plug::plug_actions::init_reaching()
     }
     else
     {
-	world_FinalPelvis.p.data[2] = 1.05;
+// 	world_FinalPelvis.p.data[2] = 1.05;
 	pelvis_generator.line_initialize(5.0, world_InitialPelvis,world_FinalPelvis); 
     }
     
@@ -419,11 +419,12 @@ bool walkman::drc::plug::plug_actions::init_safe_exiting()
 {
     YarptoKDL(right_arm_task->getActualPose(), world_InitialRhand);
     YarptoKDL(left_arm_task->getActualPose(), world_InitialLhand);
-    YarptoKDL(pelvis_task->getActualPose(), world_InitialPelvis);
+    KDL::Frame world_currentPelvis;
+    YarptoKDL(pelvis_task->getActualPose(), world_currentPelvis);
     
-    world_FinalPelvis = world_InitialPelvis;
-    world_FinalPelvis.p.data[2] = 1.05;
-    pelvis_generator.line_initialize(5.0, world_InitialPelvis,world_FinalPelvis); 
+//     world_FinalPelvis = world_InitialPelvis;
+//     world_FinalPelvis.p.data[2] = 1.05;
+    pelvis_generator.line_initialize(5.0, world_currentPelvis,world_InitialPelvis); 
     
     world_FinalRhand = world_HomePositionR;
     world_FinalLhand = world_HomePositionL;
