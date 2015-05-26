@@ -110,7 +110,8 @@ walkman::drc::plug::plug_stack::plug_stack(const double dT,
 
     /* POSTURAL TASK FOR TORSO */
     postural.reset(new tasks::velocity::Postural(q));
-    yarp::sig::Vector zero(q.size(),0.0);
+    yarp::sig::Vector zero;//(q.size(),0.0);
+    zero.resize(q.size(),0.0);
     zero[model.left_arm.joint_numbers[1]] = 20 * M_PI/180.0;
     zero[model.right_arm.joint_numbers[1]] = -20 * M_PI/180.0;
     zero[model.left_arm.joint_numbers[3]] = -30 * M_PI/180.0;

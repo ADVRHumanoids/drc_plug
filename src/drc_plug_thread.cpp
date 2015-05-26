@@ -25,7 +25,6 @@ drc_plug_thread::drc_plug_thread( std::string module_prefix,
     control_thread( module_prefix, rf, ph ),
     command_interface( module_prefix ),
     status_interface( module_prefix ),
-    q_left_desired(1),q_right_desired(1),
     plug_traj(model),real_robot(get_robot_name(),get_urdf_path(),get_srdf_path())
 {
   //STATE MACHINE
@@ -78,6 +77,7 @@ drc_plug_thread::drc_plug_thread( std::string module_prefix,
     drawer.draw_on_file("state_machine.gml",state_map);
 
     current_state = state::idle;
+    q_hands_desired.resize(2);
 
     seq_num = 0;
     status_seq_num = 0;
@@ -101,8 +101,11 @@ bool drc_plug_thread::custom_init()
     // sense
     //-- using new walkmaninterface --//
 
-    wb_input_q=robot.sensePositionRefFeedback();
-    
+//     wb_input_q=robot.sensePositionRefFeedback();
+    wb_input_q = robot.sensePosition();
+    input.q.resize(robot.getNumberOfKinematicJoints());
+    output.q.resize(robot.getNumberOfKinematicJoints());
+    wb_output_q.resize(robot.getNumberOfActuatedJoints());
     for(int i=0;i<input.q.size();i++) input.q[i]=wb_input_q[i]; //hands not considered
 
     left_hand_input_q = wb_input_q[robot.left_hand_index];
@@ -134,8 +137,8 @@ bool drc_plug_thread::custom_init()
     // SOT INITIALIZATION
     // tasks initialization
     fixed_frame = "l_sole";
-    create_sot_problem(fixed_frame);
-
+    bool created=create_sot_problem(fixed_frame);
+    if (!created) return false;
     plug_traj.init(auto_stack->left_arm_task,
                    auto_stack->right_arm_task,
                    auto_stack->right_foot_task,
@@ -303,12 +306,12 @@ void drc_plug_thread::sense()
     input.q = output.q;
 
     yarp::sig::Vector q_torso(3), q_left_arm(7), q_right_arm(7), q_left_leg(6), q_right_leg(6), q_head(2);
-    robot.fromIdynToRobot(input.q, q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head);    
+    robot.fromIdynToRobot31(input.q, q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head);    
     //OFFSET 
     q_left_arm = q_left_arm - left_arm_offset;
     q_right_arm = q_right_arm - right_arm_offset;
     
-    robot.fromRobotToIdyn(q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head, input.q);
+    robot.fromRobotToIdyn31(q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head, input.q);
     
     //FAKE ROBOT    
     //-- using new walkmaninterface --//
@@ -377,19 +380,19 @@ void drc_plug_thread::control_law()
 void drc_plug_thread::move()
 {
     yarp::sig::Vector q_torso(3), q_left_arm(7), q_left_arm_real(7), q_right_arm(7), q_left_leg(6), q_right_leg(6), q_head(2);
-    robot.fromIdynToRobot(output.q, q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head);
+    robot.fromIdynToRobot31(output.q, q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head);
     
     //OFFSET 
     q_left_arm = q_left_arm + left_arm_offset;
     q_right_arm = q_right_arm + right_arm_offset;
 
-    robot.fromRobotToIdyn(q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head, wb_output_q);
+    robot.fromRobotToIdyn31(q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head, wb_output_q);
     
-    robot.move(wb_output_q);
+    robot.move29(wb_output_q);
 
 
     yarp::sig::Vector real_joints = robot.sensePosition();
-    robot.fromIdynToRobot(real_joints, q_right_arm, q_left_arm_real, q_torso, q_right_leg, q_left_leg, q_head);
+    robot.fromIdynToRobot31(real_joints, q_right_arm, q_left_arm_real, q_torso, q_right_leg, q_left_leg, q_head);
     
     static int i=1;
     if(current_state == walkman::drc::plug::state::rotating)
@@ -403,10 +406,9 @@ bool drc_plug_thread::move_hands(double close)
 {	
   if (close <= 1.0 && close >= 0.0)
   {
-      if (plug_traj.left_arm_controlled) q_left_desired   = MIN_CLOSURE + close*(MAX_CLOSURE - MIN_CLOSURE); 
-      if (plug_traj.right_arm_controlled) q_right_desired = MIN_CLOSURE + close*(MAX_CLOSURE - MIN_CLOSURE);
-      wb_output_q[robot.left_hand_index] = q_left_desired[0];
-      wb_output_q[robot.right_hand_index] = q_right_desired[0];
+      if (plug_traj.left_arm_controlled) q_hands_desired[1]   = MIN_CLOSURE + close*(MAX_CLOSURE - MIN_CLOSURE); 
+      if (plug_traj.right_arm_controlled) q_hands_desired[0] = MIN_CLOSURE + close*(MAX_CLOSURE - MIN_CLOSURE);
+      robot.moveHands(q_hands_desired);
       return true;
   }
   else
@@ -435,12 +437,14 @@ bool drc_plug_thread::hands_in_position()
     yarp::sig::Vector q_right(1);
     sense_hands(q_left, q_right);
 
-    if ( fabs(q_left[0]-q_left_desired[0]) < 0.1 &&  fabs(q_right[0]-q_right_desired[0]) < 0.1 ) return true;	  
+    if ( fabs(q_left[0]-q_hands_desired[1]) < 0.1 &&  fabs(q_right[0]-q_hands_desired[0]) < 0.1 ) return true;	  
 	return false;
 }
 
-void drc_plug_thread::create_sot_problem(std::string base_frame)
+bool drc_plug_thread::create_sot_problem(string base_frame)
 {
+  try
+  {
     auto_stack.reset(
         new plug_stack(
             static_cast<double>(get_thread_period())/1000.0,
@@ -451,4 +455,11 @@ void drc_plug_thread::create_sot_problem(std::string base_frame)
         new OpenSoT::solvers::QPOases_sot(
             auto_stack->getStack(),
             auto_stack->getBounds()) );
+  }
+  catch (const char* ex) //Catching const chars in a control module: sadness
+  {
+    std::cout<<"Could not create a SoT stack or reset it or whatever "<<ex<<std::endl;
+    return false;
+  }
+  return true;
 }

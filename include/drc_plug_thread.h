@@ -68,9 +68,9 @@ namespace walkman
 		bool hands_in_position();
 			  
                 std::string fixed_frame;
-                void create_sot_problem(std::string base_frame);
+                bool create_sot_problem(std::string base_frame);
 		
-		yarp::sig::Vector q_left_desired,q_right_desired;
+		yarp::sig::Vector q_hands_desired;
 			  
 		std::map<state,std::string> state_map;
 		
