@@ -419,7 +419,7 @@ bool drc_plug_thread::move_hands(double close)
   {
       if (plug_traj.left_arm_controlled) q_hands_desired[1]   = MIN_CLOSURE + close*(MAX_CLOSURE - MIN_CLOSURE); 
       if (plug_traj.right_arm_controlled) q_hands_desired[0] = MIN_CLOSURE + close*(MAX_CLOSURE - MIN_CLOSURE);
-      robot.moveHands(q_hands_desired);
+      robot.moveHands(q_hands_desired[1], q_hands_desired[0]);
       return true;
   }
   else
