@@ -101,9 +101,7 @@ bool drc_plug_thread::custom_init()
     // sense
     //-- using new walkmaninterface --//
 
-//     wb_input_q=robot.sensePositionRefFeedback();
-    wb_input_q = robot.sensePosition();
-//     std::cout<<"INITIAL POSE"<<wb_input_q.toString()<<std::endl;
+    wb_input_q=robot.sensePositionRefFeedback();
     input.q.resize(robot.getNumberOfKinematicJoints());
     output.q.resize(robot.getNumberOfKinematicJoints());
     wb_output_q.resize(robot.getNumberOfActuatedJoints());
@@ -222,25 +220,10 @@ void drc_plug_thread::run()
     if ( plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_RIGHT ) {
         std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Using RIGHT hand to open the valve ..." << std::endl;
 	plug_traj.set_controlled_arms(false,true);
-// 	std::vector<bool> left_arm_active_joints = auto_stack->left_arm_task->getActiveJointsMask();
-// 	for(unsigned int i = 0; i < left_arm_active_joints.size(); ++i)
-// 	    left_arm_active_joints[i] = false;
-// 	left_arm_active_joints = auto_stack->right_arm_task->getActiveJointsMask();
-// 	for(unsigned int i = 0; i < left_arm_active_joints.size(); ++i)
-// 	    left_arm_active_joints[i] = true;
-// 	auto_stack->right_arm_task->setActiveJointsMask(left_arm_active_joints);
     }
     if ( plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_LEFT ) {
         std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Using LEFT hand to open the valve ..." << std::endl;
 	plug_traj.set_controlled_arms(true,false);
-// 	std::vector<bool> rigth_arm_active_joints = auto_stack->right_arm_task->getActiveJointsMask();
-// 	for(unsigned int i = 0; i < rigth_arm_active_joints.size(); ++i)
-// 	    rigth_arm_active_joints[i] = false;
-// 	auto_stack->right_arm_task->setActiveJointsMask(rigth_arm_active_joints);
-// 	rigth_arm_active_joints = auto_stack->left_arm_task->getActiveJointsMask();
-// 	for(unsigned int i = 0; i < rigth_arm_active_joints.size(); ++i)
-// 	    rigth_arm_active_joints[i] = true;
-// 	auto_stack->left_arm_task->setActiveJointsMask(rigth_arm_active_joints);
     }
     if (plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_VALVE_DATA_SENT ) 
     {
@@ -254,6 +237,7 @@ void drc_plug_thread::run()
     }
     if ( plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_SAFE_EXIT ) {
         std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Exiting Safely ..." << std::endl;
+	if(!move_hands(0)) std::cout<<"Hands not available "<<std::endl;
     }
     if (plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_OPENING_HANDS) {
         if(!move_hands(0)) std::cout<<"Hands not available "<<std::endl;
@@ -305,35 +289,6 @@ void drc_plug_thread::run()
 void drc_plug_thread::sense()
 {
     input.q = output.q;
-//     yarp::sig::Vector q_torso(3), q_left_arm(7), q_right_arm(7), q_left_leg(6), q_right_leg(6), q_head(2);
-//     robot.fromIdynToRobot31(input.q, q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head);
-    //OFFSET 
-//     q_left_arm = q_left_arm - left_arm_offset;
-//     q_right_arm = q_right_arm - right_arm_offset;
-    
-//     robot.fromRobotToIdyn31(q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head, input.q);
-    
-    //FAKE ROBOT    
-    //-- using new walkmaninterface --//
-
-    yarp::sig::Vector real_joints = robot.sensePosition();
-    yarp::sig::Vector real_joints_no_hands(real_joints.size()-2,(double*)real_joints.getGslVector());
-    
-//     for(int i=0;i<real_joints_no_hands.size();i++) real_joints_no_hands[i]=real_joints[i];
-    
-    //-- using new walkmaninterface --//
-    
-    real_robot.iDyn3_model.setAng(real_joints_no_hands);
-    real_robot.iDyn3_model.computePositions();
-    
-    KDL::Frame LeftFoot_LeftHand = real_robot.iDyn3_model.getPositionKDL(real_robot.left_leg.end_effector_index,real_robot.left_arm.end_effector_index);
-    
-    static int i=1;
-    if(current_state == walkman::drc::plug::state::rotating) fs<<"LF_LH_real("<<i<<",:)=["<<LeftFoot_LeftHand.p.x()<<' '<<LeftFoot_LeftHand.p.y()<<' '<<LeftFoot_LeftHand.p.z()<<"];\n";
-    
-//     YarptoKDL(auto_stack->left_arm_task->getActualPose(),LeftFoot_LeftHand);
-    LeftFoot_LeftHand = model.iDyn3_model.getPositionKDL(model.left_leg.end_effector_index,model.left_arm.end_effector_index);
-    if(current_state == walkman::drc::plug::state::rotating) fs<<"LF_LH_SoT("<<i++<<",:)=["<<LeftFoot_LeftHand.p.x()<<' '<<LeftFoot_LeftHand.p.y()<<' '<<LeftFoot_LeftHand.p.z()<<"];\n";
 }
 
 void drc_plug_thread::control_law()
@@ -380,36 +335,9 @@ void drc_plug_thread::control_law()
 void drc_plug_thread::move()
 {
     yarp::sig::Vector q_torso(3), q_left_arm(7), q_left_arm_real(7), q_right_arm(7), q_left_leg(6), q_right_leg(6), q_head(2);
-//     robot.fromIdynToRobot31(output.q, q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head);
-//     
-//     //OFFSET 
-//     q_left_arm = q_left_arm + left_arm_offset;
-//     q_right_arm = q_right_arm + right_arm_offset;
-// 
-//     robot.fromRobotToIdyn31(q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head, wb_output_q);    
-//     robot.move29(output.q);
-
-//     yarp::sig::Vector real_joints = robot.sensePosition();
-//     robot.fromRobotToIdyn31(real_joints, q_right_arm, q_left_arm_real, q_torso, q_right_leg, q_left_leg, q_head);
-    
-//     static int i=1;
-//     if(current_state == walkman::drc::plug::state::rotating)
-//         fs1<<"Jnt_SoT("<<i<<",:)=["<<q_left_arm[0]<<' '<<q_left_arm[1]<<' '<<q_left_arm[2]<<' '<<q_left_arm[3]<<' '<<q_left_arm[4]<<' '<<q_left_arm[5]<<' '<<q_left_arm[6]<<"];\n";
-//     q_left_arm = q_left_arm_real;
-//     if(current_state == walkman::drc::plug::state::rotating) 
-//         fs1<<"Jnt_real("<<i++<<",:)=["<<q_left_arm[0]<<' '<<q_left_arm[1]<<' '<<q_left_arm[2]<<' '<<q_left_arm[3]<<' '<<q_left_arm[4]<<' '<<q_left_arm[5]<<' '<<q_left_arm[6]<<"];\n";
-//     std::cout<<"OUT IDYN "<<output.q.toString()<<std::endl;
-        robot.fromIdynToRobot31(output.q, q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head);
-    
-    //OFFSET 
-//     q_left_arm = q_left_arm + left_arm_offset;
-//     q_right_arm = q_right_arm + right_arm_offset;
-    
+    robot.fromIdynToRobot31(output.q, q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head);
     yarp::sig::Vector q_move(robot.getNumberOfActuatedJoints());
-//     q_move.resize(31);
     robot.fromRobotToIdyn29(q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_move);
-//     std::cout<<"OUT IDYN "<<output.q.toString()<<std::endl;
-
     robot.move29(q_move);
 }
 
