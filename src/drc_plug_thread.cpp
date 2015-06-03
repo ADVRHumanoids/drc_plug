@@ -14,11 +14,6 @@ using namespace yarp::os;
 using namespace yarp::sig;
 using namespace walkman::drc::plug;
 
-double left_offset[7] = {-0.001878101, -0.087266425, -0.00541460025, -0.04116454775, -0.0270602895, 0.05685963075, 0.05985226625};
-double right_offset[7] = {0.00496249625, 0.01221735225, 0.023223271, -0.01633125525, -0.04591635675, 0.0131223505, -0.0860596935};
-yarp::sig::Vector left_arm_offset(7,left_offset);
-yarp::sig::Vector right_arm_offset(7,right_offset);
-
 drc_plug_thread::drc_plug_thread( std::string module_prefix, 
                              			yarp::os::ResourceFinder rf, 
                              			std::shared_ptr< paramHelp::ParamHelperServer > ph) :
@@ -77,7 +72,7 @@ drc_plug_thread::drc_plug_thread( std::string module_prefix,
         std::make_tuple( state::rotating        ,   WALKMAN_DRC_PLUG_COMMAND_ACTION_DONE      ,    state::rotated          ),
         std::make_tuple( state::rotated         ,   WALKMAN_DRC_PLUG_COMMAND_UNGRASP          ,    state::ungrasping       ),
         //--------------------------------------+---------------------------------------------+----------------------------+
-        std::make_tuple( state::ungrasping      ,   WALKMAN_DRC_PLUG_COMMAND_HAND_DONE        ,    state::ungrasped          ),
+        std::make_tuple( state::ungrasping      ,   WALKMAN_DRC_PLUG_COMMAND_HAND_DONE        ,    state::ungrasped        ),
         std::make_tuple( state::ungrasped       ,   WALKMAN_DRC_PLUG_COMMAND_MOVE_AWAY        ,    state::moving_away      ),
         //--------------------------------------+---------------------------------------------+----------------------------+
 	std::make_tuple( state::moving_away     ,   WALKMAN_DRC_PLUG_COMMAND_ACTION_DONE      ,    state::moved_away       ),
@@ -332,7 +327,7 @@ void drc_plug_thread::run()
     bool using_left,using_right;
     plug_traj.get_controlled_arms(using_left,using_right);
     
-    if (current_state == state::rotating)
+    if (current_mode == mode::stick && current_state == state::rotating)
     {
       right_done = false;
       left_done = false;
