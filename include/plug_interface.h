@@ -12,6 +12,7 @@
 #define WALKMAN_DRC_PLUG_COMMAND_GRASP "grasp"
 #define WALKMAN_DRC_PLUG_COMMAND_UNGRASP "ungrasp"
 #define WALKMAN_DRC_PLUG_COMMAND_MOVE_AWAY "move_away"
+#define WALKMAN_DRC_PLUG_COMMAND_MOVE_BACK "move_back"
 
 #define WALKMAN_DRC_PLUG_COMMAND_VALVE_DATA_SENT "valvedatasent"
 #define WALKMAN_DRC_PLUG_COMMAND_BUTTON_DATA_SENT "buttondatasent"
@@ -20,8 +21,8 @@
 
 #define WALKMAN_DRC_PLUG_COMMAND_LEFT "left_hand"
 #define WALKMAN_DRC_PLUG_COMMAND_RIGHT "right_hand"
-#define WALKMAN_DRC_PLUG_COMMAND_OPERATING "operating"
-#define WALKMAN_DRC_PLUG_COMMAND_SUPPORTING "supporting"
+#define WALKMAN_DRC_PLUG_COMMAND_STICK "stick"
+#define WALKMAN_DRC_PLUG_COMMAND_HAND "hand"
 #define WALKMAN_DRC_PLUG_COMMAND_CLOSING_HANDS "close_hands"
 #define WALKMAN_DRC_PLUG_COMMAND_OPENING_HANDS "open_hands"
 #define WALKMAN_DRC_PLUG_COMMAND_SAFE_EXIT "safe_exit"
@@ -36,8 +37,14 @@
 #define WALKMAN_DRC_PLUG_STATUS_ROTATED "rotated"
 #define WALKMAN_DRC_PLUG_STATUS_MOVING_AWAY "moving_away"
 #define WALKMAN_DRC_PLUG_STATUS_MOVED_AWAY "moved_away"
+#define WALKMAN_DRC_PLUG_STATUS_MOVING_BACK "moving_back"
+#define WALKMAN_DRC_PLUG_STATUS_MOVED_BACK "moved_back"
 #define WALKMAN_DRC_PLUG_STATUS_SAFE_EXITING "safe_exiting"
 #define WALKMAN_DRC_PLUG_STATUS_SAFE_EXITED "safe_exited"
+#define WALKMAN_DRC_PLUG_STATUS_GRASPING "grasping"
+#define WALKMAN_DRC_PLUG_STATUS_GRASPED "grasped"
+#define WALKMAN_DRC_PLUG_STATUS_UNGRASPING "ungrasping"
+#define WALKMAN_DRC_PLUG_STATUS_UNGRASPED "ungrasped"
 
 #define RAD2DEG    (180.0/M_PI)
 #define DEG2RAD    (M_PI/180.0)
@@ -67,7 +74,8 @@ namespace walkman
 	    
 	    enum class state {
                 idle,
-                ready,
+                ready_stick,
+		ready_hand,
 		reaching,
 		reached,
 		approaching,
@@ -80,8 +88,16 @@ namespace walkman
 		ungrasped,
 		moving_away,
 		moved_away,
+		moving_back,
+		moved_back,
 		safe_exiting,
 		safe_exited
+	    };
+	    
+	    enum class mode {
+		none,
+	        stick,
+		hand
 	    };
 	}
     }

@@ -57,6 +57,7 @@ namespace walkman
 		iDynUtils& model;
 		double yaw_init;
                 double radius_pin;
+                double valve_radius;
 		
 		void compute_cartesian_error(KDL::Frame Start, KDL::Frame Target, KDL::Vector& position_error, KDL::Vector& orientation_error);
 
@@ -72,22 +73,24 @@ namespace walkman
 			   OpenSoT::tasks::velocity::Postural::Ptr
  			);
 		
-                bool get_data(std::string command, std::string Frame, KDL::Frame object_data_);
+                bool get_data(std::string command, std::string Frame, KDL::Frame object_data_, double radius = -1);
 		std::string ref_frame;
 		                
 		void set_controlled_arms(bool left_arm, bool right_arm);
 		
 		// declaration of cartesian actions
-		bool init_reaching();	
-		bool init_approaching();
-		bool init_rotating(double angle);
-		bool init_moving_away();
+		bool init_reaching(mode current_mode);	
+		bool init_approaching(mode current_mode);
+		bool init_rotating(mode current_mode, double angle);
+		bool init_moving_away(mode current_mode);
+		bool init_moving_back();
 		bool init_safe_exiting();
 		
 		bool perform_reaching();
 		bool perform_approaching();
-		bool perform_rotating();
+		bool perform_rotating(mode current_mode);
 		bool perform_moving_away();
+		bool perform_moving_back();
 		bool perform_safe_exiting();
 		
 		void get_left_arm_cartesian_error(KDL::Vector& position_error, KDL::Vector& orientation_error);

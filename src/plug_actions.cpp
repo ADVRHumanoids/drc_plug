@@ -27,6 +27,7 @@
 #define APPROACHING_OFFSET 0.1		// safe distance for reaching, to be shortened during approaching
 #define INSERT_OFFSET 0.03		// how much to insert the pin in the hole of the valve
 #define DRILL_ROTATION_ANGLE 90	        // rotation of the drill (deg) to set the button of the drill in the right position
+#define VALVE_ANGLE 40
 
 //drill button offsets
 #define DRILL_BUTTON_X 0.02
@@ -48,6 +49,8 @@ walkman::drc::plug::plug_actions::plug_actions(iDynUtils& model_): model(model_)
     valve_data[ROLL_INDEX] = 0.0;
     valve_data[PITCH_INDEX] = 0.0;
     valve_data[YAW_INDEX] = 0.0;
+    
+    valve_radius = 0.0;
     
     button_data.resize(8);
     button_data[X_INDEX] = 0.0;
@@ -141,7 +144,7 @@ void walkman::drc::plug::plug_actions::get_com_cartesian_error(KDL::Vector& posi
 }
 
 // TODO
-bool walkman::drc::plug::plug_actions::get_data(std::string command, std::string Frame, KDL::Frame object_data_)
+bool walkman::drc::plug::plug_actions::get_data(std::string command, std::string Frame, KDL::Frame object_data_, double radius)
 {
     KDL::Frame  World_data;
     ref_frame = Frame;
@@ -178,10 +181,15 @@ bool walkman::drc::plug::plug_actions::get_data(std::string command, std::string
         
     world_Button.p = KDL::Vector(button_data[X_INDEX],button_data[Y_INDEX],button_data[Z_INDEX]);
     world_Button.M = KDL::Rotation::RPY(button_data[ROLL_INDEX], button_data[PITCH_INDEX], button_data[YAW_INDEX] );
+    
+    if (radius != -1)
+      valve_radius = radius;
+      std::cout<<"radius="<<valve_radius<<std::endl;
+    
     return true;       
 }
 
-bool walkman::drc::plug::plug_actions::init_reaching()
+bool walkman::drc::plug::plug_actions::init_reaching(mode current_mode)
 {      
   
     double radius_hand = sqrt( pow((world_Valve.p.x()-world_Button.p.x()),2) 
@@ -190,7 +198,6 @@ bool walkman::drc::plug::plug_actions::init_reaching()
     radius_pin = sqrt( pow((world_Valve.p.x()-world_Button.p.x()),2) 
 			+ pow((world_Valve.p.y()-world_Button.p.y()),2) 
 			+ pow((world_Valve.p.z()-world_Button.p.z()),2));
-//     std::cout<<"Radius from hand to valve: "<<radius_hand<<std::endl;
     std::cout<<"Radius from pin to valve: "<<radius_pin<<std::endl;
     
     YarptoKDL(left_arm_task->getActualPose(), world_InitialLhand);  
@@ -210,19 +217,44 @@ bool walkman::drc::plug::plug_actions::init_reaching()
 	pelvis_generator.line_initialize(5.0, world_InitialPelvis,world_FinalPelvis); 
     }
     
-    if (left_arm_controlled){ 
-	Button_FinalLhand.p = KDL::Vector(-(APPROACHING_OFFSET + PIN_HAND_X),-PIN_HAND_Y,0);
-	Button_FinalLhand.M = KDL::Rotation::RotY(-M_PI/2.0);
-	world_FinalLhand = world_Button * Button_FinalLhand;
-	
-	left_arm_generator.line_initialize(5.0, world_InitialLhand,world_FinalLhand);
+    if (current_mode == mode::stick)
+    {
+	if (left_arm_controlled){ 
+	    Button_FinalLhand.p = KDL::Vector(-(APPROACHING_OFFSET + PIN_HAND_X),-PIN_HAND_Y,0);
+	    Button_FinalLhand.M = KDL::Rotation::RotY(-M_PI/2.0);
+	    world_FinalLhand = world_Button * Button_FinalLhand;
+	    
+	    left_arm_generator.line_initialize(5.0, world_InitialLhand,world_FinalLhand);
+	}
+	if (right_arm_controlled){
+	    Button_FinalRhand.p = KDL::Vector(-(APPROACHING_OFFSET + PIN_HAND_X),PIN_HAND_Y,0);
+	    Button_FinalRhand.M = KDL::Rotation::RotY(-M_PI/2.0);
+	    world_FinalRhand = world_Button * Button_FinalRhand;
+	    
+	    right_arm_generator.line_initialize(5.0, world_InitialRhand,world_FinalRhand); 
+	}
     }
-    if (right_arm_controlled){
-	Button_FinalRhand.p = KDL::Vector(-(APPROACHING_OFFSET + PIN_HAND_X),PIN_HAND_Y,0);
-	Button_FinalRhand.M = KDL::Rotation::RotY(-M_PI/2.0);
-	world_FinalRhand = world_Button * Button_FinalRhand;
+    if (current_mode == mode::hand)
+    {
+	KDL::Frame Valve_FinalR,Valve_FinalL,world_ValveRotated;
+	world_ValveRotated=world_Valve*KDL::Frame(KDL::Rotation::RotX(VALVE_ANGLE*DEG2RAD));
 	
-	right_arm_generator.line_initialize(5.0, world_InitialRhand,world_FinalRhand); 
+	if (left_arm_controlled)
+	{ 
+	    Valve_FinalL.p=KDL::Vector(0,valve_radius+APPROACHING_OFFSET,0);
+	    Valve_FinalL.M=KDL::Rotation::RotY(-M_PI/2.0);
+	    world_FinalLhand =world_ValveRotated* Valve_FinalL;
+	    
+	    left_arm_generator.line_initialize(5.0, world_InitialLhand,world_FinalLhand);
+	}
+	if (right_arm_controlled)
+	{
+	    Valve_FinalR.p=KDL::Vector(0,-(valve_radius+APPROACHING_OFFSET),0);
+	    Valve_FinalR.M=KDL::Rotation::RotY(-M_PI/2.0);
+	    world_FinalRhand =world_ValveRotated* Valve_FinalR;
+
+    	    right_arm_generator.line_initialize(5.0, world_InitialRhand,world_FinalRhand); 
+	}
     }
     
     yarp::sig::Vector q_now = postural_task->getReference();
@@ -269,26 +301,45 @@ bool walkman::drc::plug::plug_actions::perform_reaching()
     return true;
 }
 
-bool walkman::drc::plug::plug_actions::init_approaching()
+bool walkman::drc::plug::plug_actions::init_approaching(mode current_mode)
 {
     YarptoKDL(left_arm_task->getActualPose(), world_InitialLhand);  
     YarptoKDL(right_arm_task->getActualPose(), world_InitialRhand);
     
-    if (left_arm_controlled)
-    { 
-	Button_FinalLhand.p = KDL::Vector(-PIN_HAND_X,-PIN_HAND_Y,0);
-	Button_FinalLhand.M = KDL::Rotation::RotY(-M_PI/2.0);
-	world_FinalLhand = world_Button * Button_FinalLhand;
-        left_arm_generator.line_initialize(5.0, world_InitialLhand,world_FinalLhand);
-    }
-    if (right_arm_controlled)
+    if (current_mode == mode::stick)
     {
-	Button_FinalRhand.p = KDL::Vector(-PIN_HAND_X,PIN_HAND_Y,0);
-	Button_FinalRhand.M = KDL::Rotation::RotY(-M_PI/2.0);
-	world_FinalRhand = world_Button * Button_FinalRhand; 
-        right_arm_generator.line_initialize(5.0, world_InitialRhand,world_FinalRhand); 
+	if (left_arm_controlled)
+	{ 
+	    Button_FinalLhand.p = KDL::Vector(-PIN_HAND_X,-PIN_HAND_Y,0);
+	    Button_FinalLhand.M = KDL::Rotation::RotY(-M_PI/2.0);
+	    world_FinalLhand = world_Button * Button_FinalLhand;
+	    left_arm_generator.line_initialize(5.0, world_InitialLhand,world_FinalLhand);
+	}
+	if (right_arm_controlled)
+	{
+	    Button_FinalRhand.p = KDL::Vector(-PIN_HAND_X,PIN_HAND_Y,0);
+	    Button_FinalRhand.M = KDL::Rotation::RotY(-M_PI/2.0);
+	    world_FinalRhand = world_Button * Button_FinalRhand; 
+	    right_arm_generator.line_initialize(5.0, world_InitialRhand,world_FinalRhand); 
+	}
     }
-     
+    
+    if (current_mode == mode::hand)
+    {
+	KDL::Frame deltaY; 
+	if (left_arm_controlled)
+	{ 
+	    deltaY.p[1] = -APPROACHING_OFFSET;
+	    world_FinalLhand = world_InitialLhand*deltaY;
+	    left_arm_generator.line_initialize(5.0, world_InitialLhand,world_FinalLhand);
+	}
+	if (right_arm_controlled)
+	{
+	    deltaY.p[1] = APPROACHING_OFFSET;
+	    world_FinalRhand = world_InitialRhand*deltaY;
+    	    right_arm_generator.line_initialize(5.0, world_InitialRhand,world_FinalRhand); 
+	}
+    }
     initialized_time=yarp::os::Time::now();
     
     return true;
@@ -312,11 +363,8 @@ bool walkman::drc::plug::plug_actions::perform_approaching()
     return true;
 }
 
-bool walkman::drc::plug::plug_actions::init_rotating(double angle)
+bool walkman::drc::plug::plug_actions::init_rotating(mode current_mode, double angle)
 {
-    double rot_amount = angle;
-    double T_f = angle/10;
-    
     KDL::Frame world_OffsetValve = world_Valve;
     
     KDL::Twist dXd_L, dXd_R;
@@ -324,29 +372,52 @@ bool walkman::drc::plug::plug_actions::init_rotating(double angle)
     YarptoKDL(right_arm_task->getActualPose(), world_InitialRhand);
     YarptoKDL(left_arm_task->getActualPose(), world_InitialLhand);
     
-    if (left_arm_controlled)
+    if (current_mode == mode::stick)
     {
-	world_OffsetValve.p.data[1] -= PIN_HAND_Y;
-	left_arm_generator.circle_initialize( T_f, radius_pin, -rot_amount * DEG2RAD, world_InitialLhand, world_OffsetValve);
-	left_arm_generator.circle_trajectory(T_f + 1.0, world_FinalLhand, dXd_L);
-    }
+	double rot_amount = angle;
+	double T_f = angle/10;
 
-    if (right_arm_controlled)
+	if (left_arm_controlled)
+	{
+	    world_OffsetValve.p.data[1] -= PIN_HAND_Y;
+	    left_arm_generator.circle_initialize( T_f, radius_pin, -rot_amount * DEG2RAD, world_InitialLhand, world_OffsetValve);
+	    left_arm_generator.circle_trajectory(T_f + 1.0, world_FinalLhand, dXd_L);
+	}
+
+	if (right_arm_controlled)
+	{
+	    world_OffsetValve.p.data[1] += PIN_HAND_Y;
+	    right_arm_generator.circle_initialize(T_f, radius_pin, -rot_amount * DEG2RAD, world_InitialRhand, world_OffsetValve);
+	    right_arm_generator.circle_trajectory(T_f + 1.0, world_FinalRhand, dXd_R);
+	}
+    }
+    
+    if (current_mode == mode::hand)
     {
-	world_OffsetValve.p.data[1] += PIN_HAND_Y;
-	right_arm_generator.circle_initialize(T_f, radius_pin, -rot_amount * DEG2RAD, world_InitialRhand, world_OffsetValve);
-	right_arm_generator.circle_trajectory(T_f + 1.0, world_FinalRhand, dXd_R);
+	double rot_amount = VALVE_ANGLE;
+	double T_f = 5.0;
+
+	if (left_arm_controlled)
+	{
+	    left_arm_generator.circle_initialize(T_f, valve_radius, -2*VALVE_ANGLE*DEG2RAD, world_InitialLhand, world_Valve);
+	    left_arm_generator.circle_trajectory(T_f + 1.0, world_FinalLhand, dXd_L);
+	}
+	
+	if (right_arm_controlled)
+	{
+	    right_arm_generator.circle_initialize(T_f, valve_radius, -2*VALVE_ANGLE*DEG2RAD, world_InitialRhand, world_Valve);
+	    right_arm_generator.circle_trajectory(T_f + 1.0, world_FinalRhand, dXd_R);
+	}
     }
     
     initialized_time=yarp::os::Time::now();
-
     
     fs.open ("plug_debug_trj_des.m", std::fstream::out);
     
     return true;
 }
 
-bool walkman::drc::plug::plug_actions::perform_rotating()
+bool walkman::drc::plug::plug_actions::perform_rotating(mode current_mode)
 {
     auto time = yarp::os::Time::now()-initialized_time;
     KDL::Frame Xd_L, Xd_R;
@@ -355,14 +426,16 @@ bool walkman::drc::plug::plug_actions::perform_rotating()
     if (left_arm_controlled) 
     {
 	left_arm_generator.circle_trajectory(time, Xd_L, dXd_L);
-	Xd_L.M = world_InitialLhand.M;
+	if (current_mode == mode::stick)
+	    Xd_L.M = world_InitialLhand.M;
 	left_arm_task->setReference( KDLtoYarp_position( Xd_L ) );
     }
     
     if (right_arm_controlled)
     {
 	right_arm_generator.circle_trajectory(time, Xd_R, dXd_R);
-	Xd_R.M = world_InitialRhand.M;
+	if (current_mode == mode::stick)
+	    Xd_R.M = world_InitialRhand.M;
 	right_arm_task->setReference( KDLtoYarp_position( Xd_R ) );
     }
 
@@ -370,27 +443,47 @@ bool walkman::drc::plug::plug_actions::perform_rotating()
 }
 
 // TODO Change it to move perpendicularly from the initial position
-bool walkman::drc::plug::plug_actions::init_moving_away()
+bool walkman::drc::plug::plug_actions::init_moving_away(mode current_mode)
 {
     YarptoKDL(left_arm_task->getActualPose(), world_InitialLhand);  
     YarptoKDL(right_arm_task->getActualPose(), world_InitialRhand);
     
-    if (left_arm_controlled)
-    { 
-	KDL::Frame HandRotated_Hand, world_HandRotated;
-        world_HandRotated = world_InitialLhand;
-	HandRotated_Hand.p = KDL::Vector(0,0,APPROACHING_OFFSET + INSERT_OFFSET);
-	world_FinalLhand = world_HandRotated * HandRotated_Hand;
-        left_arm_generator.line_initialize(5.0, world_InitialLhand,world_FinalLhand);
-    }
-    if (right_arm_controlled) // TODO SAME AS THE LEFT ARM
+    if (current_mode == mode::stick)
     {
-	KDL::Frame HandRotated_Hand, world_HandRotated;
-        world_HandRotated = world_InitialRhand;
-	HandRotated_Hand.p = KDL::Vector(0,0,APPROACHING_OFFSET + INSERT_OFFSET);
-	world_FinalRhand = world_HandRotated * HandRotated_Hand;
-        right_arm_generator.line_initialize(5.0, world_InitialRhand,world_FinalRhand); 
+	if (left_arm_controlled)
+	{ 
+	    KDL::Frame HandRotated_Hand, world_HandRotated;
+	    world_HandRotated = world_InitialLhand;
+	    HandRotated_Hand.p = KDL::Vector(0,0,APPROACHING_OFFSET + INSERT_OFFSET);
+	    world_FinalLhand = world_HandRotated * HandRotated_Hand;
+	    left_arm_generator.line_initialize(5.0, world_InitialLhand,world_FinalLhand);
+	}
+	if (right_arm_controlled) // TODO SAME AS THE LEFT ARM
+	{
+	    KDL::Frame HandRotated_Hand, world_HandRotated;
+	    world_HandRotated = world_InitialRhand;
+	    HandRotated_Hand.p = KDL::Vector(0,0,APPROACHING_OFFSET + INSERT_OFFSET);
+	    world_FinalRhand = world_HandRotated * HandRotated_Hand;
+	    right_arm_generator.line_initialize(5.0, world_InitialRhand,world_FinalRhand); 
+	}
     }
+    if (current_mode == mode::hand)
+    {
+	KDL::Frame deltaY; 
+	if (left_arm_controlled)
+	{ 
+	    deltaY.p[1] = APPROACHING_OFFSET;
+	    world_FinalLhand = world_InitialLhand*deltaY;
+	    left_arm_generator.line_initialize(5.0, world_InitialLhand,world_FinalLhand);
+	}
+	if (right_arm_controlled)
+	{
+	    deltaY.p[1] = -APPROACHING_OFFSET;
+	    world_FinalRhand = world_InitialRhand*deltaY;
+    	    right_arm_generator.line_initialize(5.0, world_InitialRhand,world_FinalRhand); 
+	}
+    }
+
      
     initialized_time=yarp::os::Time::now();
     
@@ -412,6 +505,54 @@ bool walkman::drc::plug::plug_actions::perform_moving_away()
 	right_arm_task->setReference( KDLtoYarp_position( Xd_R ) );    
     }
    
+    return true;
+}
+
+bool walkman::drc::plug::plug_actions::init_moving_back()
+{    
+    KDL::Twist dXd_L, dXd_R;
+    
+    YarptoKDL(right_arm_task->getActualPose(), world_InitialRhand);
+    YarptoKDL(left_arm_task->getActualPose(), world_InitialLhand);
+    
+    double rot_amount = VALVE_ANGLE;
+    double T_f = 5.0;
+
+    if (left_arm_controlled)
+    {
+	left_arm_generator.circle_initialize(T_f, valve_radius + APPROACHING_OFFSET, 2*VALVE_ANGLE*DEG2RAD, world_InitialLhand, world_Valve);
+	left_arm_generator.circle_trajectory(T_f + 1.0, world_FinalLhand, dXd_L);
+    }
+    
+    if (right_arm_controlled)
+    {
+	right_arm_generator.circle_initialize(T_f, valve_radius + APPROACHING_OFFSET, 2*VALVE_ANGLE*DEG2RAD, world_InitialRhand, world_Valve);
+	right_arm_generator.circle_trajectory(T_f + 1.0, world_FinalRhand, dXd_R);
+    }
+    
+    initialized_time=yarp::os::Time::now();
+    
+    return true;
+}
+
+bool walkman::drc::plug::plug_actions::perform_moving_back()
+{
+    auto time = yarp::os::Time::now()-initialized_time;
+    KDL::Frame Xd_L, Xd_R;
+    KDL::Twist dXd_L, dXd_R;
+
+    if (left_arm_controlled) 
+    {
+	left_arm_generator.circle_trajectory(time, Xd_L, dXd_L);
+	left_arm_task->setReference( KDLtoYarp_position( Xd_L ) );
+    }
+    
+    if (right_arm_controlled)
+    {
+	right_arm_generator.circle_trajectory(time, Xd_R, dXd_R);
+	right_arm_task->setReference( KDLtoYarp_position( Xd_R ) );
+    }
+
     return true;
 }
 

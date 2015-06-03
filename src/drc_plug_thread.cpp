@@ -28,11 +28,11 @@ drc_plug_thread::drc_plug_thread( std::string module_prefix,
     plug_traj(model),real_robot(get_robot_name(),get_urdf_path(),get_srdf_path())
 {
   //STATE MACHINE
-    std::vector<std::tuple<state,std::string,state>> transition_table{
+    std::vector<std::tuple<state,std::string,state>> stick_transition_table{
         //--------------initial state ----------+--------- command ---------------------------+------ final state--------- +
-        std::make_tuple( state::idle            ,   WALKMAN_DRC_PLUG_COMMAND_BUTTON_DATA_SENT ,    state::ready            ),
+        std::make_tuple( state::idle            ,   WALKMAN_DRC_PLUG_COMMAND_BUTTON_DATA_SENT ,    state::ready_stick      ),
         //--------------------------------------+---------------------------------------------+----------------------------+
-	std::make_tuple( state::ready           ,   WALKMAN_DRC_PLUG_COMMAND_REACH            ,    state::reaching         ),
+	std::make_tuple( state::ready_stick     ,   WALKMAN_DRC_PLUG_COMMAND_REACH            ,    state::reaching         ),
         //--------------------------------------+---------------------------------------------+----------------------------+
         std::make_tuple( state::reaching        ,   WALKMAN_DRC_PLUG_COMMAND_ACTION_DONE      ,    state::reached          ),
         std::make_tuple( state::reached         ,   WALKMAN_DRC_PLUG_COMMAND_APPROACH         ,    state::approaching      ),
@@ -53,12 +53,48 @@ drc_plug_thread::drc_plug_thread( std::string module_prefix,
 	std::make_tuple( state::moved_away      ,   WALKMAN_DRC_PLUG_COMMAND_SAFE_EXIT        ,    state::safe_exiting     ),
         //--------------------------------------+---------------------------------------------+----------------------------+
         std::make_tuple( state::safe_exiting    ,   WALKMAN_DRC_PLUG_COMMAND_ACTION_DONE      ,    state::safe_exited      ),
+        std::make_tuple( state::safe_exited     ,   WALKMAN_DRC_PLUG_COMMAND_REACH            ,    state::reaching         ),
+    };
+    
+    std::vector<std::tuple<state,std::string,state>> hand_transition_table{
+        //--------------initial state ----------+--------- command ---------------------------+------ final state--------- +
+        std::make_tuple( state::idle            ,   WALKMAN_DRC_PLUG_COMMAND_VALVE_DATA_SENT  ,    state::ready_hand       ),
         //--------------------------------------+---------------------------------------------+----------------------------+
+	std::make_tuple( state::ready_hand      ,   WALKMAN_DRC_PLUG_COMMAND_REACH            ,    state::reaching         ),
+        //--------------------------------------+---------------------------------------------+----------------------------+
+        std::make_tuple( state::reaching        ,   WALKMAN_DRC_PLUG_COMMAND_ACTION_DONE      ,    state::reached          ),
+        std::make_tuple( state::reached         ,   WALKMAN_DRC_PLUG_COMMAND_APPROACH         ,    state::approaching      ),
+        std::make_tuple( state::reached         ,   WALKMAN_DRC_PLUG_COMMAND_REACH            ,    state::reaching         ),
+        std::make_tuple( state::reached         ,   WALKMAN_DRC_PLUG_COMMAND_SAFE_EXIT        ,    state::safe_exiting     ),
+        //--------------------------------------+---------------------------------------------+----------------------------+
+        std::make_tuple( state::approaching     ,   WALKMAN_DRC_PLUG_COMMAND_ACTION_DONE      ,    state::approached       ),
+        std::make_tuple( state::approached      ,   WALKMAN_DRC_PLUG_COMMAND_REACH            ,    state::reaching         ),
+        std::make_tuple( state::approached      ,   WALKMAN_DRC_PLUG_COMMAND_GRASP            ,    state::grasping         ),
+        //--------------------------------------+---------------------------------------------+----------------------------+
+        std::make_tuple( state::grasping        ,   WALKMAN_DRC_PLUG_COMMAND_HAND_DONE        ,    state::grasped          ),
+        std::make_tuple( state::grasped         ,   WALKMAN_DRC_PLUG_COMMAND_ROTATE           ,    state::rotating         ),
+	//--------------------------------------+---------------------------------------------+----------------------------+
+        std::make_tuple( state::rotating        ,   WALKMAN_DRC_PLUG_COMMAND_ACTION_DONE      ,    state::rotated          ),
+        std::make_tuple( state::rotated         ,   WALKMAN_DRC_PLUG_COMMAND_UNGRASP          ,    state::ungrasping       ),
+        //--------------------------------------+---------------------------------------------+----------------------------+
+        std::make_tuple( state::ungrasping      ,   WALKMAN_DRC_PLUG_COMMAND_HAND_DONE        ,    state::ungrasped          ),
+        std::make_tuple( state::ungrasped       ,   WALKMAN_DRC_PLUG_COMMAND_MOVE_AWAY        ,    state::moving_away      ),
+        //--------------------------------------+---------------------------------------------+----------------------------+
+	std::make_tuple( state::moving_away     ,   WALKMAN_DRC_PLUG_COMMAND_ACTION_DONE      ,    state::moved_away       ),
+	std::make_tuple( state::moved_away      ,   WALKMAN_DRC_PLUG_COMMAND_MOVE_BACK        ,    state::moving_back      ),
+	std::make_tuple( state::moved_away      ,   WALKMAN_DRC_PLUG_COMMAND_SAFE_EXIT        ,    state::safe_exiting     ),
+        //--------------------------------------+---------------------------------------------+----------------------------+
+        std::make_tuple( state::moving_back     ,   WALKMAN_DRC_PLUG_COMMAND_ACTION_DONE      ,    state::moved_back       ),
+        std::make_tuple( state::moved_back      ,   WALKMAN_DRC_PLUG_COMMAND_SAFE_EXIT        ,    state::safe_exiting     ),
+        std::make_tuple( state::moved_back      ,   WALKMAN_DRC_PLUG_COMMAND_APPROACH         ,    state::approaching      ),
+        //--------------------------------------+---------------------------------------------+----------------------------+
+        std::make_tuple( state::safe_exiting    ,   WALKMAN_DRC_PLUG_COMMAND_ACTION_DONE      ,    state::safe_exited      ),
         std::make_tuple( state::safe_exited     ,   WALKMAN_DRC_PLUG_COMMAND_REACH            ,    state::reaching         ),
     };
     
     state_map[state::idle] = "idle";
-    state_map[state::ready] = "ready";
+    state_map[state::ready_stick] = "ready_stick";
+    state_map[state::ready_hand] = "ready_hand";
     state_map[state::reaching] = "reaching";
     state_map[state::reached] = "reached";
     state_map[state::approaching] = "approaching";
@@ -67,23 +103,36 @@ drc_plug_thread::drc_plug_thread( std::string module_prefix,
     state_map[state::rotated] = "rotated";
     state_map[state::moving_away] = "moving_away";
     state_map[state::moved_away] = "moved_away";
+    state_map[state::moving_back] = "moving_back";
+    state_map[state::moved_back] = "moved_back";
     state_map[state::safe_exiting] = "safe_exiting";
     state_map[state::safe_exited] = "safe_exited";
+    state_map[state::grasping] = "grasping";
+    state_map[state::grasped] = "grasped";
+    state_map[state::ungrasping] = "ungrasping";
+    state_map[state::ungrasped] = "ungrasped";
 
-    stateMachine.insert(transition_table);
+    stick_sm.insert(stick_transition_table);
+    hand_sm.insert(hand_transition_table);
     
-    walkman::drc::draw_state_machine<state,std::string> drawer;
-    drawer.insert(transition_table);
-    drawer.draw_on_file("state_machine.gml",state_map);
+//     walkman::drc::draw_state_machine<state,std::string> drawer;
+//     drawer.insert(transition_table);
+//     drawer.draw_on_file("state_machine.gml",state_map);
 
+    stateMachines[mode::stick] = stick_sm;
+    stateMachines[mode::hand] = hand_sm;
+    
     current_state = state::idle;
+    current_mode = mode::none;
+    
     q_hands_desired.resize(2);
 
     seq_num = 0;
     status_seq_num = 0;
-
+    
+/*
     fs.open ("plug_debug_trj.m", std::fstream::out);
-    fs1.open ("plug_debug_jnt.m", std::fstream::out);
+    fs1.open ("plug_debug_jnt.m", std::fstream::out);*/
 }
 
 bool drc_plug_thread::custom_init()
@@ -96,7 +145,7 @@ bool drc_plug_thread::custom_init()
     // start the status chain_interface
     status_interface.start();
     // notify the ready status
-    status_interface.setStatus( status_definitions.status_to_code.at(WALKMAN_DRC_PLUG_STATUS_READY) );	
+    status_interface.setStatus( status_definitions.status_to_code.at(WALKMAN_DRC_PLUG_STATUS_IDLE) );	
     
     // sense
     //-- using new walkmaninterface --//
@@ -152,28 +201,27 @@ bool drc_plug_thread::custom_init()
 
 void drc_plug_thread::init_actions(state new_state)
 {
-    if ( new_state == state::ready)
-    {
-    }
     if ( new_state == state::reaching)
     {	
-	plug_traj.init_reaching();
+	plug_traj.init_reaching(current_mode);
     }
     if ( new_state == state::approaching)
     {
-	plug_traj.init_approaching();
+	plug_traj.init_approaching(current_mode);
     }
     if ( new_state == state::rotating)
     {
-	yarp::sig::Matrix r_w = auto_stack->right_arm_task->getWeight(); 
-	r_w(3,3) = 0.0; 
-	auto_stack->right_arm_task->setWeight(r_w);
-	
-	yarp::sig::Matrix l_w = auto_stack->left_arm_task->getWeight();
-	l_w(3,3) = 0.0; 
-	auto_stack->left_arm_task->setWeight(l_w);
-	
-	plug_traj.init_rotating(plug_cmd.angle);
+	if (current_mode == mode::stick)
+	{
+	    yarp::sig::Matrix r_w = auto_stack->right_arm_task->getWeight(); 
+	    r_w(3,3) = 0.0; 
+	    auto_stack->right_arm_task->setWeight(r_w);
+	    
+	    yarp::sig::Matrix l_w = auto_stack->left_arm_task->getWeight();
+	    l_w(3,3) = 0.0; 
+	    auto_stack->left_arm_task->setWeight(l_w);
+	}
+	plug_traj.init_rotating(current_mode, plug_cmd.angle);
     }
     if ( new_state == state::moving_away)
     {
@@ -184,9 +232,13 @@ void drc_plug_thread::init_actions(state new_state)
 	yarp::sig::Matrix l_w = auto_stack->left_arm_task->getWeight();
 	l_w(3,3) = 1; 
 	auto_stack->left_arm_task->setWeight(l_w);
-	plug_traj.init_moving_away();
+	plug_traj.init_moving_away(current_mode);
     }
-
+    if ( new_state == state::moving_back)
+    {
+	plug_traj.init_moving_back();
+    }
+    
     if ( new_state == state::safe_exiting )
     {
 	plug_traj.init_safe_exiting();
@@ -200,16 +252,29 @@ void drc_plug_thread::run()
     command_interface.getCommand(plug_cmd,seq_num);
     
     // evolve the state machine accordingly to the received command
-    state new_state=stateMachine.evolve_state_machine(current_state,plug_cmd.command);
+    state new_state;
+    if(current_mode!=mode::none) new_state=stateMachines.at(current_mode).evolve_state_machine(current_state,plug_cmd.command);
     if (current_state!=new_state)
     {
 	init_actions(new_state);
 	current_state = new_state;
     }
-
+    if ( plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_STICK ) {
+        std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Stick mode ..." << std::endl;	
+	current_mode = mode::stick;
+	current_state = state::idle;
+    }
+    if ( plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_HAND ) {
+        std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Hand mode ..." << std::endl;	
+	current_mode = mode::hand;
+	current_state = state::idle;
+    }
     if ( plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_REACH ) {
         std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Reaching the valve ..." << std::endl;	
-	if(!move_hands(1)) std::cout<<"Hands not available "<<std::endl;
+	if (current_mode == mode::stick)
+	    if(!move_hands(1)) std::cout<<"Hands not available "<<std::endl;
+	if (current_mode == mode::hand)
+	    if(!move_hands(0)) std::cout<<"Hands not available "<<std::endl;
     }
     if ( plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_APPROACH ) {
         std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Approaching the valve ..." << std::endl;
@@ -228,7 +293,7 @@ void drc_plug_thread::run()
     if (plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_VALVE_DATA_SENT ) 
     {
 	std::cout << "Command ["<<seq_num<<"]: "<<plug_cmd.command<<", Valve data received ..." << std::endl;
-	plug_traj.get_data(plug_cmd.command, plug_cmd.frame, plug_cmd.valve_data);
+	plug_traj.get_data(plug_cmd.command, plug_cmd.frame, plug_cmd.valve_data, plug_cmd.radius);
     }   
     if (plug_cmd.command == WALKMAN_DRC_PLUG_COMMAND_BUTTON_DATA_SENT ) 
     {
@@ -273,14 +338,17 @@ void drc_plug_thread::run()
       left_done = false;
     }
     
-    if( (using_right && right_done) || (using_left && left_done) )
+    if(current_mode!=mode::none)
     {
-	current_state=stateMachine.evolve_state_machine(current_state,WALKMAN_DRC_PLUG_COMMAND_ACTION_DONE);
-    }
+	if( (using_right && right_done) || (using_left && left_done) )
+	{
+	    current_state=stateMachines.at(current_mode).evolve_state_machine(current_state,WALKMAN_DRC_PLUG_COMMAND_ACTION_DONE);
+	}
     
     if(hands_in_position() &&
             (current_state == walkman::drc::plug::state::grasping || current_state == walkman::drc::plug::state::ungrasping))
-		current_state=stateMachine.evolve_state_machine(current_state,WALKMAN_DRC_PLUG_COMMAND_HAND_DONE);
+		current_state=stateMachines.at(current_mode).evolve_state_machine(current_state,WALKMAN_DRC_PLUG_COMMAND_HAND_DONE);    
+    }
     
     if(status_definitions.status_to_code.count(state_map[current_state]))
     status_interface.setStatus(status_definitions.status_to_code.at(state_map[current_state]) , status_seq_num++);
@@ -310,7 +378,7 @@ void drc_plug_thread::control_law()
     }
     if ( current_state == state::rotating )
     {
-	if(!plug_traj.perform_rotating()){ std::cout<<"ERROR ROTATING DRILL: not possible with operating hand"<<std::endl; success=false;}
+	if(!plug_traj.perform_rotating(current_mode)){ std::cout<<"ERROR ROTATING DRILL: not possible with operating hand"<<std::endl; success=false;}
 	else success=true;
     }
     if ( current_state == state::moving_away )
@@ -318,12 +386,26 @@ void drc_plug_thread::control_law()
 	if(!plug_traj.perform_moving_away()){ std::cout<<"ERROR MOVING AWAY"<<std::endl; success=false;}
 	else success=true;
     }
+    if ( current_state == state::moving_back )
+    {
+	if(!plug_traj.perform_moving_back()){ std::cout<<"ERROR MOVING AWAY"<<std::endl; success=false;}
+	else success=true;
+    }
     if ( current_state == state::safe_exiting )
     {
 	if(!plug_traj.perform_safe_exiting()){ std::cout<<"ERROR SAFE EXITING"<<std::endl; success=false;}
 	else success=true;
     }
-    
+    if ( current_state == state::grasping )
+    {
+	if(!move_hands(1)){ std::cout << " ERROR GRASPING: hands not available"<<std::endl; success=false;}
+	else success=true;
+    }
+    if ( current_state == state::ungrasping )
+    {
+	if(!move_hands(0)){ std::cout << " ERROR GRASPING: hands not available"<<std::endl; success=false;}
+	else success=true;
+    }
     if(solver->solve(output.q_dot))
 	output.q = input.q + output.q_dot;
     else {
@@ -345,7 +427,7 @@ bool drc_plug_thread::move_hands(double close)
 {	
   if (close <= 1.0 && close >= 0.0)
   {
-      if (plug_traj.left_arm_controlled) q_hands_desired[1]   = MIN_CLOSURE + close*(MAX_CLOSURE - MIN_CLOSURE); 
+      if (plug_traj.left_arm_controlled) q_hands_desired[1]  = MIN_CLOSURE + close*(MAX_CLOSURE - MIN_CLOSURE); 
       if (plug_traj.right_arm_controlled) q_hands_desired[0] = MIN_CLOSURE + close*(MAX_CLOSURE - MIN_CLOSURE);
       robot.moveHands(q_hands_desired[1], q_hands_desired[0]);
       return true;

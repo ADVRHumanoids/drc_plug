@@ -40,7 +40,9 @@ namespace walkman
         std::fstream fs,fs1;
         iDynUtils real_robot;
         
-		state_machine<state> stateMachine;
+		state_machine<state> stick_sm;
+		state_machine<state> hand_sm;
+		std::map<mode,state_machine<state>> stateMachines;
 		
 		plug_actions plug_traj;
 		walkman::yarp_custom_command_interface<plug_msg> command_interface;
@@ -62,6 +64,7 @@ namespace walkman
 		yarp::sig::Vector left_hand_input_q, right_hand_input_q;
 		
 		state current_state;
+		mode current_mode;
 		
 		void init_actions(state new_state);
 		
