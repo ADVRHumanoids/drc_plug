@@ -213,7 +213,6 @@ bool walkman::drc::plug::plug_actions::init_reaching(mode current_mode)
     }
     else
     {
-// 	world_FinalPelvis.p.data[2] = 1.05;
 	pelvis_generator.line_initialize(5.0, world_InitialPelvis,world_FinalPelvis); 
     }
     
@@ -442,7 +441,6 @@ bool walkman::drc::plug::plug_actions::perform_rotating(mode current_mode)
     return true;
 }
 
-// TODO Change it to move perpendicularly from the initial position
 bool walkman::drc::plug::plug_actions::init_moving_away(mode current_mode)
 {
     YarptoKDL(left_arm_task->getActualPose(), world_InitialLhand);  
@@ -563,8 +561,6 @@ bool walkman::drc::plug::plug_actions::init_safe_exiting()
     KDL::Frame world_currentPelvis;
     YarptoKDL(pelvis_task->getActualPose(), world_currentPelvis);
     
-//     world_FinalPelvis = world_InitialPelvis;
-//     world_FinalPelvis.p.data[2] = 1.05;
     pelvis_generator.line_initialize(5.0, world_currentPelvis,world_InitialPelvis); 
     
     world_FinalRhand = world_HomePositionR;
