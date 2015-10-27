@@ -118,13 +118,19 @@ walkman::drc::plug::plug_stack::plug_stack(const double dT,
     zero[model.right_arm.joint_numbers[3]] = -30 * M_PI/180.0;
     postural->setReference(zero);
 
+    yarp::sig::Vector max = model.iDyn3_model.getJointBoundMax();
+    yarp::sig::Vector min = model.iDyn3_model.getJointBoundMin();
+    
+    max[18]=-0.002;
+    max[27]=-0.002;
+    
     /* JOINT BOUNDS AND VELOCITY BOUNDS */
     constraints::velocity::JointLimits::Ptr joint_bounds(
         new constraints::velocity::JointLimits(
             q,
-            model.iDyn3_model.getJointBoundMax(),
+            max,
             model.iDyn3_model.getJointBoundMin()));
-
+    
     double sot_speed_limit = 0.5;
 
     constraints::velocity::VelocityLimits::Ptr velocity_bounds(
