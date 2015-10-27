@@ -65,6 +65,7 @@ drc_plug_thread::drc_plug_thread( std::string module_prefix,
         std::make_tuple( state::approaching     ,   WALKMAN_DRC_PLUG_COMMAND_ACTION_DONE      ,    state::approached       ),
         std::make_tuple( state::approached      ,   WALKMAN_DRC_PLUG_COMMAND_REACH            ,    state::reaching         ),
         std::make_tuple( state::approached      ,   WALKMAN_DRC_PLUG_COMMAND_GRASP            ,    state::grasping         ),
+        std::make_tuple( state::approached      ,   WALKMAN_DRC_PLUG_COMMAND_MOVE_AWAY        ,    state::moving_away      ),
         //--------------------------------------+---------------------------------------------+----------------------------+
         std::make_tuple( state::grasping        ,   WALKMAN_DRC_PLUG_COMMAND_HAND_DONE        ,    state::grasped          ),
         std::make_tuple( state::grasped         ,   WALKMAN_DRC_PLUG_COMMAND_ROTATE           ,    state::rotating         ),
@@ -158,6 +159,9 @@ bool drc_plug_thread::custom_init()
     
     auto max = model.iDyn3_model.getJointBoundMax();
     auto min = model.iDyn3_model.getJointBoundMin();
+    
+
+    
     for (int i=0;i<input.q.size();i++)
     {
         if (input.q[i]>max[i])
@@ -189,7 +193,7 @@ bool drc_plug_thread::custom_init()
                    auto_stack->pelvis_task,
                    auto_stack->postural);
     
-    robot.setPositionDirectMode();
+//     robot.setPositionDirectMode();
 
     return true;
 }
@@ -246,6 +250,43 @@ void drc_plug_thread::run()
     plug_cmd.command = WALKMAN_DRC_PLUG_COMMAND_NONE;
     command_interface.getCommand(plug_cmd,seq_num);
     
+    if(plug_cmd.command==WALKMAN_DRC_PLUG_COMMAND_AUTO)
+    {
+        auto_hand = !auto_hand;
+    }
+ 
+    if(auto_hand)
+    {
+        if(current_state==state::reached)
+        {
+            plug_cmd.command=WALKMAN_DRC_PLUG_COMMAND_APPROACH;
+        }
+        if(current_state==state::approached)
+        {
+            plug_cmd.command=WALKMAN_DRC_PLUG_COMMAND_GRASP;
+        }
+        if(current_state==state::grasped)
+        {
+            plug_cmd.command=WALKMAN_DRC_PLUG_COMMAND_ROTATE;
+        }
+        if(current_state==state::rotated)
+        {
+            plug_cmd.command=WALKMAN_DRC_PLUG_COMMAND_UNGRASP;
+        }
+        if(current_state==state::ungrasped)
+        {
+            plug_cmd.command=WALKMAN_DRC_PLUG_COMMAND_MOVE_AWAY;
+        }
+        if(current_state==state::moved_away)
+        {
+            plug_cmd.command=WALKMAN_DRC_PLUG_COMMAND_MOVE_BACK;
+        }
+        if(current_state==state::moved_back)
+        {
+            plug_cmd.command=WALKMAN_DRC_PLUG_COMMAND_APPROACH;
+        }
+    }
+
     // evolve the state machine accordingly to the received command
     state new_state;
     if(current_mode!=mode::none) new_state=stateMachines.at(current_mode).evolve_state_machine(current_state,plug_cmd.command);

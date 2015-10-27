@@ -27,7 +27,7 @@
 #define APPROACHING_OFFSET 0.1		// safe distance for reaching, to be shortened during approaching
 #define INSERT_OFFSET 0.03		// how much to insert the pin in the hole of the valve
 #define DRILL_ROTATION_ANGLE 90	        // rotation of the drill (deg) to set the button of the drill in the right position
-#define VALVE_ANGLE 40
+#define VALVE_ANGLE 30
 
 //drill button offsets
 #define DRILL_BUTTON_X 0.02
@@ -206,9 +206,9 @@ bool walkman::drc::plug::plug_actions::init_reaching(mode current_mode)
     
     world_FinalPelvis = world_InitialPelvis;
     
-    if (world_Valve.p.data[2] < 1.1)
+    if (world_Valve.p.data[2] < 1.15)
     {
-	world_FinalPelvis.p.data[2] = world_Valve.p.data[2];
+	world_FinalPelvis.p.data[2] = world_Valve.p.data[2]-0.05;
 	pelvis_generator.line_initialize(5.0, world_InitialPelvis,world_FinalPelvis); 
     }
     else
@@ -394,7 +394,8 @@ bool walkman::drc::plug::plug_actions::init_rotating(mode current_mode, double a
     if (current_mode == mode::hand)
     {
 	double rot_amount = VALVE_ANGLE;
-	double T_f = 5.0;
+    double time_coefficient = 2;
+	double T_f = time_coefficient*5.0;
 
 	if (left_arm_controlled)
 	{

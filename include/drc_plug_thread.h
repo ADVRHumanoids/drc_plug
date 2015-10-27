@@ -42,6 +42,7 @@ namespace walkman
         
 		state_machine<state> stick_sm;
 		state_machine<state> hand_sm;
+        bool auto_hand=false;
 		std::map<mode,state_machine<state>> stateMachines;
 		
 		plug_actions plug_traj;
