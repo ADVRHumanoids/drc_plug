@@ -26,7 +26,7 @@ drc_plug_thread::drc_plug_thread( std::string module_prefix,
     command_interface( module_prefix ),
     status_interface( module_prefix ),
     q_left_desired(1),q_right_desired(1),
-    plug_traj(),real_robot(get_robot_name(),get_urdf_path(),get_srdf_path())
+    plug_traj(model),real_robot(get_robot_name(),get_urdf_path(),get_srdf_path())
 {
   //STATE MACHINE
     std::vector<std::tuple<state,std::string,state>> transition_table{
