@@ -155,7 +155,7 @@ bool drc_plug_thread::custom_init()
     // start the status chain_interface
     status_interface.start();
     // notify the ready status
-    status_interface.setStatus( status_definitions.status_to_code.at(WALKMAN_DRC_PLUG_STATUS_IDLE) );	
+    status_interface.setStatus( WALKMAN_DRC_PLUG_STATUS_IDLE );	
     
     // sense
     //-- using new walkmaninterface --//
@@ -400,8 +400,8 @@ void drc_plug_thread::run()
 		current_state=stateMachines.at(current_mode).evolve_state_machine(current_state,WALKMAN_DRC_PLUG_COMMAND_HAND_DONE);    
     }
     
-    if(status_definitions.status_to_code.count(state_map[current_state]))
-    status_interface.setStatus(status_definitions.status_to_code.at(state_map[current_state]) , status_seq_num++);
+//     if(status_definitions.status_to_code.count(state_map[current_state]))
+    status_interface.setStatus(state_map[current_state] , status_seq_num++);
 }    
 
 void drc_plug_thread::sense()
