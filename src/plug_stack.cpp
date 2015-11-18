@@ -1,3 +1,17 @@
+/* Copyright [2014,2015] [Corrado Pavan, Alessandro Settimi, Luca Muratore]
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.*/
+
 #include "plug_stack.h"
 
 walkman::drc::plug::plug_stack::plug_stack(const double dT,
@@ -110,20 +124,29 @@ walkman::drc::plug::plug_stack::plug_stack(const double dT,
 
     /* POSTURAL TASK FOR TORSO */
     postural.reset(new tasks::velocity::Postural(q));
-    yarp::sig::Vector zero(q.size(),0.0);
+    /*
+    yarp::sig::Vector zero;//(q.size(),0.0);
+    zero.resize(q.size(),0.0);
     zero[model.left_arm.joint_numbers[1]] = 20 * M_PI/180.0;
     zero[model.right_arm.joint_numbers[1]] = -20 * M_PI/180.0;
     zero[model.left_arm.joint_numbers[3]] = -30 * M_PI/180.0;
     zero[model.right_arm.joint_numbers[3]] = -30 * M_PI/180.0;
-    postural->setReference(zero);
+    */
+    postural->setReference(q);
 
+    yarp::sig::Vector max = model.iDyn3_model.getJointBoundMax();
+    yarp::sig::Vector min = model.iDyn3_model.getJointBoundMin();
+    
+    max[18]=-0.002;
+    max[27]=-0.002;
+    
     /* JOINT BOUNDS AND VELOCITY BOUNDS */
     constraints::velocity::JointLimits::Ptr joint_bounds(
         new constraints::velocity::JointLimits(
             q,
-            model.iDyn3_model.getJointBoundMax(),
+            max,
             model.iDyn3_model.getJointBoundMin()));
-
+    
     double sot_speed_limit = 0.5;
 
     constraints::velocity::VelocityLimits::Ptr velocity_bounds(
@@ -151,6 +174,7 @@ walkman::drc::plug::plug_stack::plug_stack(const double dT,
     this->getBounds()->update(q);
 
     /* VELOCITY ALLOCATION */
+    /*
     VelocityAllocation( this->getStack(),
                         dT, sot_speed_limit, sot_speed_limit);
 
@@ -164,5 +188,5 @@ walkman::drc::plug::plug_stack::plug_stack(const double dT,
             std::cout << "xxxxxx Setting joint space task velocity limits to " << sot_speed_limit+.2 << std::endl;
         }
     }
-
+    */
 }

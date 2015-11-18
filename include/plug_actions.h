@@ -1,3 +1,17 @@
+/* Copyright [2014,2015] [Corrado Pavan, Alessandro Settimi, Luca Muratore]
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.*/
+
 #ifndef PLUG_ACTIONS_H_
 #define PLUG_ACTIONS_H_
 
@@ -57,6 +71,7 @@ namespace walkman
 		iDynUtils& model;
 		double yaw_init;
                 double radius_pin;
+                double valve_radius;
 		
 		void compute_cartesian_error(KDL::Frame Start, KDL::Frame Target, KDL::Vector& position_error, KDL::Vector& orientation_error);
 
@@ -72,22 +87,24 @@ namespace walkman
 			   OpenSoT::tasks::velocity::Postural::Ptr
  			);
 		
-                bool get_data(std::string command, std::string Frame, KDL::Frame object_data_);
+                bool get_data(std::string command, std::string Frame, KDL::Frame object_data_, double radius = -1);
 		std::string ref_frame;
 		                
 		void set_controlled_arms(bool left_arm, bool right_arm);
 		
 		// declaration of cartesian actions
-		bool init_reaching();	
-		bool init_approaching();
-		bool init_rotating(double angle);
-		bool init_moving_away();
+		bool init_reaching(mode current_mode);	
+		bool init_approaching(mode current_mode);
+		bool init_rotating(mode current_mode, double angle);
+		bool init_moving_away(mode current_mode);
+		bool init_moving_back();
 		bool init_safe_exiting();
 		
 		bool perform_reaching();
 		bool perform_approaching();
-		bool perform_rotating();
+		bool perform_rotating(mode current_mode);
 		bool perform_moving_away();
+		bool perform_moving_back();
 		bool perform_safe_exiting();
 		
 		void get_left_arm_cartesian_error(KDL::Vector& position_error, KDL::Vector& orientation_error);
