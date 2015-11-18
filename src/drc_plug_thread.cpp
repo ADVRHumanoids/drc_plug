@@ -159,15 +159,15 @@ bool drc_plug_thread::custom_init()
     
     // sense
     //-- using new walkmaninterface --//
-
-    wb_input_q=robot.sensePositionRefFeedback();
-    input.q.resize(robot.getNumberOfKinematicJoints());
-    output.q.resize(robot.getNumberOfKinematicJoints());
-    wb_output_q.resize(robot.getNumberOfActuatedJoints());
-    for(int i=0;i<input.q.size();i++) input.q[i]=wb_input_q[i]; //hands not considered
-
-    left_hand_input_q = wb_input_q[robot.left_hand_index];
-    right_hand_input_q = wb_input_q[robot.right_hand_index];
+//     wb_input_q=robot.sensePositionRefFeedback();
+    input.q=robot.sensePosition();
+//     input.q.resize(robot.getNumberOfKinematicJoints());
+//     output.q.resize(robot.getNumberOfKinematicJoints());
+//     wb_output_q.resize(robot.getNumberOfActuatedJoints());
+//     for(int i=0;i<input.q.size();i++) input.q[i]=wb_input_q[i]; //hands not considered
+// 
+//     left_hand_input_q = wb_input_q[robot.left_hand_index];
+//     right_hand_input_q = wb_input_q[robot.right_hand_index];
     
     //-- using new walkmaninterface --//
     
@@ -467,10 +467,8 @@ void drc_plug_thread::control_law()
 void drc_plug_thread::move()
 {
     yarp::sig::Vector q_torso(3), q_left_arm(7), q_left_arm_real(7), q_right_arm(7), q_left_leg(6), q_right_leg(6), q_head(2);
-    robot.fromIdynToRobot31(output.q, q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head);
-    yarp::sig::Vector q_move(robot.getNumberOfActuatedJoints());
-    robot.fromRobotToIdyn29(q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_move);
-    robot.move29(q_move);
+    robot.fromIdynToRobot(output.q, q_right_arm, q_left_arm, q_torso, q_right_leg, q_left_leg, q_head);
+    robot.move(output.q);
 }
 
 bool drc_plug_thread::move_hands(double close)
@@ -479,7 +477,7 @@ bool drc_plug_thread::move_hands(double close)
   {
       if (plug_traj.left_arm_controlled) q_hands_desired[1]  = MIN_CLOSURE + close*(MAX_CLOSURE - MIN_CLOSURE); 
       if (plug_traj.right_arm_controlled) q_hands_desired[0] = MIN_CLOSURE + close*(MAX_CLOSURE - MIN_CLOSURE);
-      robot.moveHands(q_hands_desired[1], q_hands_desired[0]);
+      robot.moveHands(yarp::sig::Vector(1, &q_hands_desired[1]), yarp::sig::Vector(1, &q_hands_desired[0]));
       return true;
   }
   else
